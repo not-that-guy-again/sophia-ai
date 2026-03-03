@@ -12,6 +12,8 @@ from sophia.api.schemas import (
     HealthResponse,
     ToolDefinitionResponse,
 )
+from sophia.audit.database import get_session
+from sophia.audit.service import store_decision_with_hat
 from sophia.core.loop import AgentLoop, _tree_to_dict, _evaluation_to_dict, _classification_to_dict
 
 logger = logging.getLogger(__name__)
@@ -40,10 +42,21 @@ async def list_tools():
     return loop.tool_registry.get_definitions()
 
 
+async def _log_audit(loop: AgentLoop, result, message: str) -> None:
+    """Log a pipeline result to the audit database (non-fatal on failure)."""
+    try:
+        hat = loop.hat_registry.get_active()
+        async with get_session() as session:
+            await store_decision_with_hat(session, result, message, hat_config=hat)
+    except Exception:
+        logger.exception("Audit logging failed (non-fatal)")
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     loop = get_agent_loop()
     result = await loop.process(request.message)
+    await _log_audit(loop, result, request.message)
     return result.to_dict()
 
 
@@ -173,6 +186,9 @@ async def websocket_chat(websocket: WebSocket):
                 "event": "response_ready",
                 "data": {"response": result.response},
             })
+
+            # Audit log
+            await _log_audit(loop, result, message)
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
