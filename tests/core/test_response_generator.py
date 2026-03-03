@@ -45,7 +45,11 @@ async def test_generate_green_response(mock_llm: MockLLMProvider):
 
 @pytest.mark.asyncio
 async def test_generate_red_response(mock_llm: MockLLMProvider):
-    mock_llm.set_responses(["I'm unable to process that request. Giving away products for free is outside our policies."])
+    mock_llm.set_responses(
+        [
+            "I'm unable to process that request. Giving away products for free is outside our policies."
+        ]
+    )
 
     gen = ResponseGenerator(llm=mock_llm)
     response = await gen.generate(
@@ -99,3 +103,59 @@ async def test_generate_strips_whitespace(mock_llm: MockLLMProvider):
     response = await gen.converse("test")
 
     assert response == "Response with whitespace"
+
+
+# --- Constitution injection tests (ADR-019) ---
+
+SAMPLE_CONSTITUTION = "I am Sophia. I am warm without being saccharine."
+
+
+@pytest.mark.asyncio
+async def test_generate_includes_constitution(mock_llm: MockLLMProvider):
+    """Constitution text appears in the system prompt for generate()."""
+    mock_llm.set_responses(["OK"])
+
+    gen = ResponseGenerator(llm=mock_llm, constitution=SAMPLE_CONSTITUTION)
+    await gen.generate(
+        user_message="Hi",
+        risk_tier="GREEN",
+        action_taken="check_order_status",
+        action_reasoning="Greeting",
+        tool_result_message="Done",
+    )
+
+    system_prompt = mock_llm.calls[0]["system_prompt"]
+    assert "Sophia's Identity" in system_prompt
+    assert "I am Sophia" in system_prompt
+    assert "Current time context:" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_converse_includes_constitution(mock_llm: MockLLMProvider):
+    """Constitution text appears in the system prompt for converse()."""
+    mock_llm.set_responses(["Hello there."])
+
+    gen = ResponseGenerator(llm=mock_llm, constitution=SAMPLE_CONSTITUTION)
+    await gen.converse("Hi there")
+
+    system_prompt = mock_llm.calls[0]["system_prompt"]
+    assert "I am Sophia" in system_prompt
+    assert "Current time context:" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_no_constitution_when_empty(mock_llm: MockLLMProvider):
+    """When constitution is empty, no identity section appears."""
+    mock_llm.set_responses(["OK"])
+
+    gen = ResponseGenerator(llm=mock_llm, constitution="")
+    await gen.generate(
+        user_message="Hi",
+        risk_tier="GREEN",
+        action_taken="check_order_status",
+        action_reasoning="Greeting",
+        tool_result_message="Done",
+    )
+
+    system_prompt = mock_llm.calls[0]["system_prompt"]
+    assert "Sophia's Identity" not in system_prompt

@@ -6,6 +6,7 @@ from typing import Any
 
 from sophia.config import Settings
 from sophia.core.consequence import ConsequenceEngine, ConsequenceTree
+from sophia.core.constitution import load_constitution
 from sophia.core.evaluators import (
     AuthorityEvaluator,
     DomainEvaluator,
@@ -131,6 +132,9 @@ class AgentLoop:
         # Set up LLM provider
         self.llm = get_provider(self.settings)
 
+        # Load the Sophia Constitution once at startup
+        self.constitution = load_constitution()
+
         # Set up memory provider (injected or from config)
         self.memory = memory_provider or get_memory_provider(self.settings)
 
@@ -176,19 +180,19 @@ class AgentLoop:
             AuthorityEvaluator(llm=self.llm, hat_config=hat),
         ]
 
-        extra_placeholders = (
-            set(hat.manifest.placeholder_patterns) if hat else set()
-        )
+        extra_placeholders = set(hat.manifest.placeholder_patterns) if hat else set()
         self.parameter_gate = ParameterGate(
             tool_registry=self.tool_registry,
             extra_placeholders=extra_placeholders,
         )
 
         self.executor = Executor(registry=self.tool_registry)
-        self.response_generator = ResponseGenerator(llm=self.llm, hat_config=hat)
-        self.memory_extractor = MemoryExtractor(
-            llm=self.llm, memory=self.memory, hat_config=hat
+        self.response_generator = ResponseGenerator(
+            llm=self.llm,
+            hat_config=hat,
+            constitution=getattr(self, "constitution", ""),
         )
+        self.memory_extractor = MemoryExtractor(llm=self.llm, memory=self.memory, hat_config=hat)
 
     def equip_hat(self, hat_name: str) -> HatConfig:
         """Switch to a different hat and rebuild the pipeline."""
@@ -267,7 +271,9 @@ class AgentLoop:
                 for v in gate_result.validations
             ]
         }
-        if gate_result.promoted_converse or len(gate_result.surviving_candidates) < len(gate_result.original_candidates):
+        if gate_result.promoted_converse or len(gate_result.surviving_candidates) < len(
+            gate_result.original_candidates
+        ):
             proposal = Proposal(intent=proposal.intent, candidates=gate_result.surviving_candidates)
             logger.info(
                 "Parameter gate filtered %d candidates",
@@ -299,12 +305,14 @@ class AgentLoop:
         evaluation_results, risk_classification = await self._run_evaluation_panel(
             top_tree, hat, intent, proposal.candidates
         )
-        logger.info("Risk classification: %s (score=%.2f)", risk_classification.tier, risk_classification.weighted_score)
+        logger.info(
+            "Risk classification: %s (score=%.2f)",
+            risk_classification.tier,
+            risk_classification.weighted_score,
+        )
 
         # Step 5: Tiered execution based on risk classification
-        execution = await self._tiered_execute(
-            risk_classification, proposal, consequence_trees
-        )
+        execution = await self._tiered_execute(risk_classification, proposal, consequence_trees)
 
         logger.info(
             "Result: %s (success=%s, tier=%s)",
@@ -323,7 +331,9 @@ class AgentLoop:
                 action_taken=execution.action_taken.tool_name,
                 action_reasoning=execution.action_taken.reasoning,
                 tool_result_message=execution.tool_result.message,
-                tool_result_data=execution.tool_result.data if isinstance(execution.tool_result.data, dict) else None,
+                tool_result_data=execution.tool_result.data
+                if isinstance(execution.tool_result.data, dict)
+                else None,
             )
         else:
             response = execution.tool_result.message
@@ -429,7 +439,10 @@ class AgentLoop:
         for r in evaluation_results:
             logger.info(
                 "  %s: score=%.2f confidence=%.2f flags=%s",
-                r.evaluator_name, r.score, r.confidence, r.flags,
+                r.evaluator_name,
+                r.score,
+                r.confidence,
+                r.flags,
             )
 
         # Deterministic risk classification
