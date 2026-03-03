@@ -12,14 +12,15 @@ logger = logging.getLogger(__name__)
 class ExecutionResult:
     action_taken: CandidateAction
     tool_result: ToolResult
-    risk_tier: str  # Phase 1: always "GREEN"
+    risk_tier: str  # Set by consequence analysis in the pipeline loop
 
 
 class Executor:
     """Executes proposed actions via the tool registry.
 
-    Phase 1: Naive execution — takes the first candidate and runs it directly.
-    No consequence evaluation or risk classification.
+    Takes the first candidate and runs it via the tool registry. Risk
+    classification is handled upstream by the consequence engine; the
+    loop overrides risk_tier on the result after execution.
     """
 
     def __init__(self, registry: ToolRegistry):
@@ -48,5 +49,5 @@ class Executor:
         return ExecutionResult(
             action_taken=candidate,
             tool_result=tool_result,
-            risk_tier="GREEN",  # Phase 1: no evaluation, everything is green
+            risk_tier="GREEN",  # Default; overridden by consequence analysis in the loop
         )

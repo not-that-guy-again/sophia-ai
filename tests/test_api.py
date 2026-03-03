@@ -92,6 +92,7 @@ def test_chat_endpoint():
                 )
             ],
         ),
+        consequence_trees=[],
         execution=ExecutionResult(
             action_taken=CandidateAction(
                 tool_name="check_order_status",

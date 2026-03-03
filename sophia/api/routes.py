@@ -12,7 +12,9 @@ from sophia.api.schemas import (
     HealthResponse,
     ToolDefinitionResponse,
 )
-from sophia.core.loop import AgentLoop
+from sophia.core.loop import AgentLoop, _tree_to_dict
+from sophia.core.tree_analysis import classify_risk
+from sophia.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -141,9 +143,52 @@ async def websocket_chat(websocket: WebSocket):
                 "data": {"candidates": [asdict(c) for c in proposal.candidates]},
             })
 
-            # Step 3: Execute (Phase 1: naive)
+            # Step 3: Generate consequence trees
+            await websocket.send_json({"event": "processing", "stage": "consequence"})
+            consequence_trees = []
+            for candidate in proposal.candidates:
+                tree = await loop.consequence_engine.analyze(candidate)
+                consequence_trees.append(tree)
+
+            top_tree = consequence_trees[0] if consequence_trees else None
+            risk_tier = (
+                classify_risk(
+                    top_tree,
+                    catastrophic_threshold=loop.settings.catastrophic_threshold,
+                )
+                if top_tree
+                else "GREEN"
+            )
+
+            await websocket.send_json({
+                "event": "consequences_analyzed",
+                "data": {
+                    "trees": [_tree_to_dict(t) for t in consequence_trees],
+                    "risk_tier": risk_tier,
+                },
+            })
+
+            # Step 4: Execute based on risk tier
             await websocket.send_json({"event": "processing", "stage": "executor"})
-            execution = await loop.executor.execute(proposal)
+            if risk_tier == "RED":
+                from sophia.core.executor import ExecutionResult
+                from sophia.core.proposer import CandidateAction
+
+                execution = ExecutionResult(
+                    action_taken=proposal.candidates[0] if proposal.candidates else CandidateAction(
+                        tool_name="none", reasoning="No candidates"
+                    ),
+                    tool_result=ToolResult(
+                        success=False,
+                        data=None,
+                        message="Action refused: consequence analysis identified catastrophic risk.",
+                    ),
+                    risk_tier="RED",
+                )
+            else:
+                execution = await loop.executor.execute(proposal)
+                execution.risk_tier = risk_tier
+
             await websocket.send_json({
                 "event": "action_executed",
                 "data": {

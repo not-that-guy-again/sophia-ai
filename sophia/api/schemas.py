@@ -38,10 +38,35 @@ class ProposalResponse(BaseModel):
     candidates: list[CandidateActionResponse]
 
 
+class ConsequenceNodeResponse(BaseModel):
+    id: str
+    description: str
+    stakeholders_affected: list[str]
+    probability: float
+    tangibility: float
+    harm_benefit: float
+    affected_party: str
+    children: list["ConsequenceNodeResponse"] = []
+    is_terminal: bool
+
+
+ConsequenceNodeResponse.model_rebuild()
+
+
+class ConsequenceTreeResponse(BaseModel):
+    candidate_tool_name: str
+    root_nodes: list[ConsequenceNodeResponse]
+    max_depth: int
+    total_nodes: int
+    worst_harm: float | None
+    best_benefit: float | None
+
+
 class ChatResponse(BaseModel):
     response: str
     intent: IntentResponse
     proposal: ProposalResponse
+    consequence_trees: list[ConsequenceTreeResponse] = []
     execution: ExecutionResponse
     metadata: dict = {}
 
