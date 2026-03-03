@@ -22,9 +22,9 @@ def test_equip_hat():
     assert registry.get_active() is not None
     assert registry.get_active().name == "customer-service"
 
-    # Tools should be registered
+    # Tools should be registered (10 hat tools + converse)
     defs = tool_reg.get_definitions()
-    assert len(defs) == 10
+    assert len(defs) == 11
 
 
 def test_unequip_hat():
@@ -32,7 +32,7 @@ def test_unequip_hat():
     registry = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
 
     registry.equip("customer-service")
-    assert len(tool_reg.get_definitions()) == 10
+    assert len(tool_reg.get_definitions()) == 11
 
     registry.unequip()
     assert registry.get_active() is None
@@ -43,6 +43,35 @@ def test_equip_unknown_hat():
     registry = HatRegistry(hats_dir=HATS_DIR, tool_registry=ToolRegistry())
     with pytest.raises(ValueError, match="not found"):
         registry.equip("nonexistent-hat")
+
+
+def test_converse_in_tool_definitions():
+    """After equipping a hat, 'converse' appears as a structured tool definition."""
+    tool_reg = ToolRegistry()
+    registry = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
+
+    registry.equip("customer-service")
+    defs = tool_reg.get_definitions()
+    converse_defs = [d for d in defs if d["name"] == "converse"]
+    assert len(converse_defs) == 1
+    assert "conversational" in converse_defs[0]["description"].lower()
+
+
+def test_converse_persists_after_hat_switch():
+    """Converse tool is re-registered when switching hats."""
+    tool_reg = ToolRegistry()
+    registry = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
+
+    # Equip, verify converse
+    registry.equip("customer-service")
+    assert any(d["name"] == "converse" for d in tool_reg.get_definitions())
+
+    # Unequip and re-equip (simulates hat switch)
+    registry.unequip()
+    registry.equip("customer-service")
+    defs = tool_reg.get_definitions()
+    assert any(d["name"] == "converse" for d in defs)
+    assert len(defs) == 11
 
 
 def test_get_active_or_raise_no_hat():

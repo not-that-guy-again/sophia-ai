@@ -13,44 +13,70 @@ User Input
     │
     ▼
 ┌─────────────────┐
+│  0. Memory       │  Query memory for relevant entities/episodes (read-only)
+│     Recall       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
 │  1. Input Gate   │  Parse intent, attach metadata, pull hat context
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
 │  2. Proposer     │  LLM generates 1-3 candidate actions (NO execution)
-└────────┬────────┘  Only tools from the equipped Hat are available
+└────────┬────────┘  Can select "converse" to bypass bracketed stages
          │
-         ▼
-┌─────────────────┐
-│  3. Consequence  │  For each candidate, generate branching outcome tree
-│     Tree         │  Each node: stakeholders, probability, tangibility, harm/benefit
+         ├── converse ──────────────────────────┐
+         │                                      ▼
+         ▼                            ┌──────────────────┐
+┌─────────────────┐                   │  7. Response Gen  │
+│  3. Consequence  │                  │     (converse)    │
+│     Tree         │                  └────────┬─────────┘
+└────────┬────────┘                            │
+         │                                     │
+         ▼                                     │
+┌─────────────────┐                            │
+│  4. Evaluation   │                           │
+│     Panel        │                           │
+└────────┬────────┘                            │
+         │                                     │
+         ▼                                     │
+┌─────────────────┐                            │
+│  5. Risk         │                           │
+│     Classifier   │                           │
+└────────┬────────┘                            │
+         │                                     │
+         ▼                                     │
+┌─────────────────┐                            │
+│  6. Executor     │                           │
+└────────┬────────┘                            │
+         │                                     │
+         ▼                                     │
+┌─────────────────┐                            │
+│  7. Response Gen │  LLM turns raw results ◄──┘
+│     (generate)   │  into natural language
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  4. Evaluation   │  4 independent evaluators score the tree in parallel
-│     Panel        │  Self-interest | Tribal harm | Domain rules | Authority
-└────────┬────────┘  Evaluators use Hat-specific context and tuning
-         │
-         ▼
-┌─────────────────┐
-│  5. Risk         │  Aggregate scores → risk tier (GREEN/YELLOW/ORANGE/RED)
-│     Classifier   │  Deterministic routing logic, not LLM inference
+│  8. Memory       │  Extract and store entities/episodes (write-only)
+│     Persist      │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  6. Executor     │  GREEN: act | YELLOW: confirm | ORANGE: escalate | RED: refuse
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  7. Audit Log    │  Full trail: input → proposals → tree → scores → action → outcome
+│  9. Audit Log    │  Full trail: input → proposals → tree → scores → action → outcome
 └─────────────────┘
 ```
 
-**Current state (Phase 1):** Steps 1, 2, and 6 are implemented. Steps 3-5 and 7 are future phases. The executor currently runs the top candidate directly with a hardcoded GREEN tier.
+### Conversational Bypass (ADR-017)
+
+When the proposer selects `"converse"` as the tool_name, the bracketed stages (consequence tree, evaluation panel, risk classifier, executor) are skipped entirely. The message goes directly to the response generator's `converse()` path. This handles greetings, general questions, and messages where no tool is appropriate — without wasting LLM calls on consequence analysis.
+
+### Response Generation (ADR-018)
+
+The response generator replaces the old `_build_response()` method. Instead of dumping raw tool results, an LLM call turns pipeline output into natural language matching the hat's voice and tone. This ensures users never see Python dicts, tool names, or pipeline internals.
 
 ## Design Principles
 
@@ -89,9 +115,13 @@ Abstract interface supporting multiple backends:
 ### Pipeline Components (`sophia/core/`)
 
 - **`input_gate.py`** — Parses raw user messages into structured `Intent` objects. Prompt is assembled from core + hat system prompt.
-- **`proposer.py`** — Generates 1-3 `CandidateAction` items with reasoning. Only sees the active hat's tools. Prompt includes domain constraints.
-- **`executor.py`** — Dispatches the selected action to the tool registry. In Phase 1, always takes the top candidate. Future phases route by risk tier.
-- **`loop.py`** — `AgentLoop` orchestrates the pipeline. Initializes with a hat, rebuilds components on hat switch, runs the full Input Gate → Proposer → Executor chain.
+- **`proposer.py`** — Generates 1-3 `CandidateAction` items with reasoning. Only sees the active hat's tools. Can select `"converse"` to bypass consequence/evaluation stages.
+- **`consequence.py`** — Generates depth-first consequence trees for each candidate action. Each node carries stakeholders, probability, tangibility, and harm/benefit scores.
+- **`evaluators/`** — Four independent evaluators (tribal, domain, self-interest, authority) score consequence trees in parallel.
+- **`risk_classifier.py`** — Deterministic aggregation of evaluator scores into risk tiers (GREEN/YELLOW/ORANGE/RED). Supports catastrophic-harm overrides and evaluator-disagreement bumps.
+- **`executor.py`** — Tiered execution: GREEN executes, YELLOW requests confirmation, ORANGE auto-escalates, RED refuses. Handles `"converse"` gracefully without touching the tool registry.
+- **`response_generator.py`** — LLM-based natural language generation from raw pipeline output. `generate()` for tool results, `converse()` for conversational bypass. Uses the hat's system prompt for domain-appropriate tone.
+- **`loop.py`** — `AgentLoop` orchestrates the full pipeline: Memory Recall → Input Gate → Proposer → [Consequence → Evaluation → Risk → Executor] → Response Generator → Memory Persist.
 
 ### Tool System (`sophia/tools/`)
 
@@ -118,14 +148,34 @@ The WebSocket sends granular events as the pipeline progresses: `hat_equipped`, 
 
 ## Data Flow
 
+### Full Pipeline (tool execution)
+
 ```
 User message (string)
+  → MemoryProvider.search_entities() → memory context (read-only)
   → InputGate.parse() → Intent
   → Proposer.propose(intent) → Proposal [1-3 CandidateActions]
-  → Executor.execute(proposal) → ExecutionResult
-  → AgentLoop._build_response() → response string
+  → ConsequenceEngine.analyze(candidate) → ConsequenceTree (per candidate)
+  → Evaluators.evaluate() → [EvaluatorResult × 4] (parallel)
+  → classify() → RiskClassification (GREEN/YELLOW/ORANGE/RED)
+  → Executor (tiered) → ExecutionResult
+  → ResponseGenerator.generate() → natural language response
+  → MemoryExtractor.extract_and_store() → memory persist (write-only)
 
 All wrapped in PipelineResult with full metadata.
+```
+
+### Conversational Bypass (no tool)
+
+```
+User message (string)
+  → MemoryProvider.search_entities() → memory context
+  → InputGate.parse() → Intent
+  → Proposer.propose(intent) → Proposal [tool_name="converse"]
+  → ResponseGenerator.converse() → natural language response
+  → MemoryExtractor.extract_and_store() → memory persist
+
+PipelineResult with bypassed=True, empty trees/evaluations/classification.
 ```
 
 ## Configuration
@@ -145,12 +195,29 @@ Settings are loaded from environment variables (`.env` file) via Pydantic `BaseS
 
 Evaluator weights, risk thresholds, and domain constraints are all configured per-hat, not globally.
 
+### Memory System (`sophia/memory/`)
+
+- **`models.py`** — `Episode`, `Entity`, `Relationship` dataclasses
+- **`provider.py`** — `MemoryProvider` ABC with search, recall, and store methods; `get_memory_provider()` factory
+- **`mock.py`** — Dict-based in-memory provider for tests
+- **`surrealdb.py`** — Production provider backed by SurrealDB (document + graph + vector)
+- **`extractor.py`** — LLM-based extraction of entities, episodes, and relationships from pipeline results
+
+### Audit System (`sophia/audit/`)
+
+- **`models.py`** — SQLAlchemy ORM: Decision, DecisionProposal, DecisionTree, DecisionEvaluation, DecisionOutcome, Feedback, HatConfigSnapshot
+- **`database.py`** — Async engine, session factory, lifecycle management
+- **`service.py`** — Append-only operations: store_decision_with_hat, store_outcome, store_feedback, query_decisions
+
+Audit is non-intrusive — logged at the API layer, not in the core loop. Hat config is snapshotted at decision time for historical interpretability.
+
 ## Phase Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
 | 1 | Foundation — hat system, pipeline, API | Complete |
-| 2 | Consequence Engine — depth-first outcome trees | Planned |
-| 3 | Evaluation Panel — 4 evaluators + risk classifier | Planned |
-| 4 | Chat UI — React web interface | Planned |
-| 5 | Audit & Feedback — persistent logging, outcome tracking | Planned |
+| 2 | Consequence Engine — depth-first outcome trees | Complete |
+| 3 | Evaluation Panel — 4 evaluators + risk classifier | Complete |
+| 4 | Chat UI — React web interface | Complete |
+| 5 | Audit & Feedback — persistent logging, outcome tracking | Complete |
+| 6 | Memory System — three-tier memory with SurrealDB | Complete |

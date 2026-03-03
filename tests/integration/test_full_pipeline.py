@@ -538,6 +538,87 @@ async def test_ps5_with_evaluation_panel_red(
 
 
 @pytest.mark.asyncio
+async def test_conversational_input_bypasses_pipeline(
+    mock_llm: MockLLMProvider, tool_registry: ToolRegistry, cs_hat_config: HatConfig
+):
+    """Conversational input: proposer selects 'converse', full pipeline stages are skipped."""
+    from sophia.core.loop import AgentLoop, CONVERSE_TOOL_NAME
+    from sophia.memory.mock import MockMemoryProvider
+    from sophia.config import Settings
+    from pathlib import Path
+
+    mock_llm.set_responses([
+        # 1. Input gate
+        json.dumps({
+            "action_requested": "general_inquiry",
+            "target": None,
+            "parameters": {},
+        }),
+        # 2. Proposer — selects converse
+        json.dumps({
+            "candidates": [{
+                "tool_name": "converse",
+                "parameters": {},
+                "reasoning": "User is asking about the return policy, no tool needed",
+                "expected_outcome": "Agent explains the return policy conversationally",
+            }]
+        }),
+        # 3. Response generator (converse path)
+        "Our return policy allows returns within 30 days of purchase with a valid receipt.",
+        # 4. Memory extractor
+        json.dumps({
+            "episode": {
+                "participants": ["customer", "agent"],
+                "summary": "Customer asked about return policy.",
+                "actions_taken": [],
+                "outcome": "Conversational exchange",
+            },
+            "entities": [],
+            "relationships": [],
+        }),
+    ])
+
+    settings = Settings(
+        llm_provider="anthropic",
+        anthropic_api_key="test",
+        default_hat="customer-service",
+        memory_provider="mock",
+    )
+
+    memory = MockMemoryProvider()
+    loop = AgentLoop.__new__(AgentLoop)
+    loop.settings = settings
+    loop.llm = mock_llm
+    loop.memory = memory
+    loop.tool_registry = ToolRegistry()
+    loop.hat_registry = __import__(
+        "sophia.hats.registry", fromlist=["HatRegistry"]
+    ).HatRegistry(
+        hats_dir=Path(settings.hats_dir),
+        tool_registry=loop.tool_registry,
+    )
+    loop.hat_registry.equip(settings.default_hat)
+    loop._rebuild_pipeline()
+
+    result = await loop.process("What is your return policy?")
+
+    # Verify bypass occurred
+    assert result.bypassed is True
+    assert result.consequence_trees == []
+    assert result.evaluation_results == []
+    assert result.execution.action_taken.tool_name == CONVERSE_TOOL_NAME
+    assert result.execution.risk_tier == "GREEN"
+
+    # Verify natural language response (not raw data)
+    assert "return policy" in result.response.lower()
+    assert "{" not in result.response  # No JSON/dict leakage
+
+    # Verify only 4 LLM calls (input gate, proposer, response gen, memory extract)
+    # NOT 8+ (which would include consequence + 4 evaluators)
+    assert len(mock_llm.calls) == 4
+
+
+@pytest.mark.asyncio
 async def test_yellow_tier_confirmation(
     mock_llm: MockLLMProvider, tool_registry: ToolRegistry, cs_hat_config: HatConfig
 ):
