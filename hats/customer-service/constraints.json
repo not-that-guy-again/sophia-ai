@@ -1,0 +1,27 @@
+{
+  "business_name": "TechMart Electronics",
+  "policies": {
+    "refund_window_days": 30,
+    "max_agent_refund": 100.00,
+    "max_agent_discount_percent": 20,
+    "max_agent_partial_refund": 50.00,
+    "require_order_verification": true,
+    "require_reason_for_compensation": true,
+    "free_items_allowed": false,
+    "max_replacements_per_order": 1
+  },
+  "escalation_triggers": [
+    "customer threatens legal action",
+    "refund amount exceeds agent authority",
+    "customer claims injury or safety issue",
+    "request involves multiple orders over $200 total",
+    "customer requests to speak with manager"
+  ],
+  "hard_rules": [
+    "Never give away products for free",
+    "Never process refunds without verifying the order exists",
+    "Never share other customers' information",
+    "Never make promises about future policy changes",
+    "Always verify order belongs to the requesting customer before any action"
+  ]
+}

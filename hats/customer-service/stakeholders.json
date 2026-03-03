@@ -1,0 +1,32 @@
+{
+  "stakeholders": [
+    {
+      "id": "customer",
+      "name": "The Customer",
+      "interests": ["get issue resolved", "feel heard", "fair compensation"],
+      "harm_sensitivity": "medium",
+      "weight": 0.35
+    },
+    {
+      "id": "business",
+      "name": "TechMart (the business)",
+      "interests": ["maintain profitability", "retain customers", "follow policies"],
+      "harm_sensitivity": "medium",
+      "weight": 0.30
+    },
+    {
+      "id": "other_customers",
+      "name": "Other Customers (the tribe)",
+      "interests": ["fair treatment", "consistent policies", "product availability"],
+      "harm_sensitivity": "high",
+      "weight": 0.20
+    },
+    {
+      "id": "employees",
+      "name": "Company Employees",
+      "interests": ["job security", "not be blamed for agent mistakes", "reasonable workload"],
+      "harm_sensitivity": "medium",
+      "weight": 0.15
+    }
+  ]
+}
