@@ -62,11 +62,31 @@ class ConsequenceTreeResponse(BaseModel):
     best_benefit: float | None
 
 
+class EvaluatorResultResponse(BaseModel):
+    evaluator_name: str
+    score: float
+    confidence: float
+    flags: list[str] = []
+    reasoning: str = ""
+    key_concerns: list[str] = []
+
+
+class RiskClassificationResponse(BaseModel):
+    tier: str
+    weighted_score: float
+    individual_scores: dict[str, float] = {}
+    flags: list[str] = []
+    override_reason: str | None = None
+    explanation: str = ""
+
+
 class ChatResponse(BaseModel):
     response: str
     intent: IntentResponse
     proposal: ProposalResponse
     consequence_trees: list[ConsequenceTreeResponse] = []
+    evaluations: list[EvaluatorResultResponse] = []
+    risk_classification: RiskClassificationResponse | None = None
     execution: ExecutionResponse
     metadata: dict = {}
 

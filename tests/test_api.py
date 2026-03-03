@@ -10,6 +10,7 @@ from sophia.core.input_gate import Intent
 from sophia.core.proposer import Proposal, CandidateAction
 from sophia.core.executor import ExecutionResult
 from sophia.core.loop import PipelineResult
+from sophia.core.risk_classifier import RiskClassification
 from sophia.tools.base import ToolResult
 
 
@@ -93,6 +94,12 @@ def test_chat_endpoint():
             ],
         ),
         consequence_trees=[],
+        evaluation_results=[],
+        risk_classification=RiskClassification(
+            tier="GREEN",
+            weighted_score=0.0,
+            explanation="No consequence tree generated.",
+        ),
         execution=ExecutionResult(
             action_taken=CandidateAction(
                 tool_name="check_order_status",

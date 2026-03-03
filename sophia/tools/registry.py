@@ -24,6 +24,9 @@ class ToolRegistry:
     def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
+    def has_tool(self, name: str) -> bool:
+        return name in self._tools
+
     async def execute(self, tool_name: str, params: dict) -> ToolResult:
         tool = self._tools.get(tool_name)
         if not tool:

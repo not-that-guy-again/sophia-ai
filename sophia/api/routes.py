@@ -12,9 +12,7 @@ from sophia.api.schemas import (
     HealthResponse,
     ToolDefinitionResponse,
 )
-from sophia.core.loop import AgentLoop, _tree_to_dict
-from sophia.core.tree_analysis import classify_risk
-from sophia.tools.base import ToolResult
+from sophia.core.loop import AgentLoop, _tree_to_dict, _evaluation_to_dict, _classification_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -127,82 +125,53 @@ async def websocket_chat(websocket: WebSocket):
             data = await websocket.receive_text()
             message = json.loads(data).get("message", data)
 
-            # Step 1: Parse intent
-            await websocket.send_json({"event": "processing", "stage": "input_gate"})
-            intent = await loop.input_gate.parse(message)
+            # Run the full pipeline (includes evaluation panel)
+            result = await loop.process(message)
+
+            # Emit pipeline stage events for UI visualization
             await websocket.send_json({
                 "event": "intent_parsed",
-                "data": asdict(intent),
+                "data": asdict(result.intent),
             })
 
-            # Step 2: Generate proposals
-            await websocket.send_json({"event": "processing", "stage": "proposer"})
-            proposal = await loop.proposer.propose(intent)
             await websocket.send_json({
                 "event": "proposals_generated",
-                "data": {"candidates": [asdict(c) for c in proposal.candidates]},
+                "data": {"candidates": [asdict(c) for c in result.proposal.candidates]},
             })
-
-            # Step 3: Generate consequence trees
-            await websocket.send_json({"event": "processing", "stage": "consequence"})
-            consequence_trees = []
-            for candidate in proposal.candidates:
-                tree = await loop.consequence_engine.analyze(candidate)
-                consequence_trees.append(tree)
-
-            top_tree = consequence_trees[0] if consequence_trees else None
-            risk_tier = (
-                classify_risk(
-                    top_tree,
-                    catastrophic_threshold=loop.settings.catastrophic_threshold,
-                )
-                if top_tree
-                else "GREEN"
-            )
 
             await websocket.send_json({
                 "event": "consequences_analyzed",
                 "data": {
-                    "trees": [_tree_to_dict(t) for t in consequence_trees],
-                    "risk_tier": risk_tier,
+                    "trees": [_tree_to_dict(t) for t in result.consequence_trees],
                 },
             })
 
-            # Step 4: Execute based on risk tier
-            await websocket.send_json({"event": "processing", "stage": "executor"})
-            if risk_tier == "RED":
-                from sophia.core.executor import ExecutionResult
-                from sophia.core.proposer import CandidateAction
+            # Emit individual evaluator results
+            for eval_result in result.evaluation_results:
+                await websocket.send_json({
+                    "event": "evaluator_complete",
+                    "data": _evaluation_to_dict(eval_result),
+                })
 
-                execution = ExecutionResult(
-                    action_taken=proposal.candidates[0] if proposal.candidates else CandidateAction(
-                        tool_name="none", reasoning="No candidates"
-                    ),
-                    tool_result=ToolResult(
-                        success=False,
-                        data=None,
-                        message="Action refused: consequence analysis identified catastrophic risk.",
-                    ),
-                    risk_tier="RED",
-                )
-            else:
-                execution = await loop.executor.execute(proposal)
-                execution.risk_tier = risk_tier
+            # Emit risk classification
+            await websocket.send_json({
+                "event": "risk_classified",
+                "data": _classification_to_dict(result.risk_classification),
+            })
 
             await websocket.send_json({
                 "event": "action_executed",
                 "data": {
-                    "action_taken": asdict(execution.action_taken),
-                    "tool_result": asdict(execution.tool_result),
-                    "risk_tier": execution.risk_tier,
+                    "action_taken": asdict(result.execution.action_taken),
+                    "tool_result": asdict(result.execution.tool_result),
+                    "risk_tier": result.execution.risk_tier,
                 },
             })
 
             # Final response
-            response = loop._build_response(execution)
             await websocket.send_json({
                 "event": "response_ready",
-                "data": {"response": response},
+                "data": {"response": result.response},
             })
 
     except WebSocketDisconnect:

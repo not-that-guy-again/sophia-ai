@@ -1,14 +1,23 @@
+import asyncio
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from sophia.config import Settings
 from sophia.core.consequence import ConsequenceEngine, ConsequenceTree
+from sophia.core.evaluators import (
+    AuthorityEvaluator,
+    DomainEvaluator,
+    EvaluationContext,
+    EvaluatorResult,
+    SelfInterestEvaluator,
+    TribalEvaluator,
+)
 from sophia.core.executor import ExecutionResult, Executor
 from sophia.core.input_gate import InputGate, Intent
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
-from sophia.core.tree_analysis import classify_risk
+from sophia.core.risk_classifier import RiskClassification, classify
 from sophia.hats.registry import HatRegistry
 from sophia.hats.schema import HatConfig
 from sophia.llm.provider import get_provider
@@ -45,6 +54,21 @@ def _tree_to_dict(tree: ConsequenceTree) -> dict:
     }
 
 
+def _evaluation_to_dict(result: EvaluatorResult) -> dict:
+    return asdict(result)
+
+
+def _classification_to_dict(rc: RiskClassification) -> dict:
+    return {
+        "tier": rc.tier,
+        "weighted_score": rc.weighted_score,
+        "individual_scores": rc.individual_scores,
+        "flags": rc.flags,
+        "override_reason": rc.override_reason,
+        "explanation": rc.explanation,
+    }
+
+
 @dataclass
 class PipelineResult:
     """Full result from one pass through the agent pipeline."""
@@ -52,6 +76,8 @@ class PipelineResult:
     intent: Intent
     proposal: Proposal
     consequence_trees: list[ConsequenceTree]
+    evaluation_results: list[EvaluatorResult]
+    risk_classification: RiskClassification
     execution: ExecutionResult
     response: str
     metadata: dict = field(default_factory=dict)
@@ -63,6 +89,8 @@ class PipelineResult:
                 "candidates": [asdict(c) for c in self.proposal.candidates],
             },
             "consequence_trees": [_tree_to_dict(t) for t in self.consequence_trees],
+            "evaluations": [_evaluation_to_dict(e) for e in self.evaluation_results],
+            "risk_classification": _classification_to_dict(self.risk_classification),
             "execution": {
                 "action_taken": asdict(self.execution.action_taken),
                 "tool_result": asdict(self.execution.tool_result),
@@ -76,11 +104,9 @@ class PipelineResult:
 class AgentLoop:
     """Main agent orchestration loop.
 
-    On init, loads the configured hat via HatRegistry. All pipeline components
-    receive hat context: tools are scoped, prompts are assembled from core + hat
-    fragments, and domain constraints come from the hat.
-
-    Pipeline: Input Gate -> Proposer -> Consequence Engine -> Executor.
+    Pipeline: Input Gate -> Proposer -> Consequence Engine ->
+              Evaluation Panel (4 evaluators in parallel) ->
+              Risk Classifier -> Tiered Executor.
     """
 
     def __init__(self, settings: Settings | None = None):
@@ -122,6 +148,15 @@ class AgentLoop:
             hat_config=hat,
             max_depth=self.settings.tree_max_depth,
         )
+
+        # Evaluation panel: 4 independent evaluators
+        self.evaluators = [
+            SelfInterestEvaluator(llm=self.llm, hat_config=hat),
+            TribalEvaluator(llm=self.llm, hat_config=hat),
+            DomainEvaluator(llm=self.llm, hat_config=hat),
+            AuthorityEvaluator(llm=self.llm, hat_config=hat),
+        ]
+
         self.executor = Executor(registry=self.tool_registry)
 
     def equip_hat(self, hat_name: str) -> HatConfig:
@@ -159,30 +194,17 @@ class AgentLoop:
                 tree.best_terminal.harm_benefit if tree.best_terminal else 0.0,
             )
 
-        # Step 4: Classify risk on top candidate's tree
+        # Step 4: Evaluation panel — run 4 evaluators in parallel on top candidate's tree
         top_tree = consequence_trees[0] if consequence_trees else None
-        risk_tier = (
-            classify_risk(top_tree, catastrophic_threshold=self.settings.catastrophic_threshold)
-            if top_tree
-            else "GREEN"
+        evaluation_results, risk_classification = await self._run_evaluation_panel(
+            top_tree, hat, intent, proposal.candidates
         )
-        logger.info("Risk classification: %s", risk_tier)
+        logger.info("Risk classification: %s (score=%.2f)", risk_classification.tier, risk_classification.weighted_score)
 
-        # Step 5: Execute based on risk tier
-        if risk_tier == "RED":
-            # REFUSE — do not execute the action
-            execution = ExecutionResult(
-                action_taken=proposal.candidates[0],
-                tool_result=ToolResult(
-                    success=False,
-                    data=None,
-                    message="Action refused: consequence analysis identified catastrophic risk.",
-                ),
-                risk_tier="RED",
-            )
-        else:
-            execution = await self.executor.execute(proposal)
-            execution.risk_tier = risk_tier
+        # Step 5: Tiered execution based on risk classification
+        execution = await self._tiered_execute(
+            risk_classification, proposal, consequence_trees
+        )
 
         logger.info(
             "Result: %s (success=%s, tier=%s)",
@@ -198,10 +220,78 @@ class AgentLoop:
             intent=intent,
             proposal=proposal,
             consequence_trees=consequence_trees,
+            evaluation_results=evaluation_results,
+            risk_classification=risk_classification,
             execution=execution,
             response=response,
             metadata={"hat": hat_name},
         )
+
+    async def _run_evaluation_panel(
+        self,
+        tree: ConsequenceTree | None,
+        hat: HatConfig | None,
+        intent: Intent,
+        candidates: list[CandidateAction],
+    ) -> tuple[list[EvaluatorResult], RiskClassification]:
+        """Run all evaluators in parallel and classify risk."""
+        if tree is None:
+            # No tree to evaluate — default to GREEN
+            empty_classification = RiskClassification(
+                tier="GREEN",
+                weighted_score=0.0,
+                recommended_action=candidates[0] if candidates else None,
+                explanation="No consequence tree generated.",
+            )
+            return [], empty_classification
+
+        context = EvaluationContext(
+            consequence_tree=tree,
+            hat_config=hat,
+            constraints=hat.constraints if hat else {},
+            stakeholders=hat.stakeholders.stakeholders if hat else [],
+            requestor_context=intent.requestor_context,
+        )
+
+        # Run all evaluators in parallel
+        results = await asyncio.gather(
+            *[evaluator.evaluate(context) for evaluator in self.evaluators]
+        )
+        evaluation_results = list(results)
+
+        for r in evaluation_results:
+            logger.info(
+                "  %s: score=%.2f confidence=%.2f flags=%s",
+                r.evaluator_name, r.score, r.confidence, r.flags,
+            )
+
+        # Deterministic risk classification
+        risk_classification = classify(evaluation_results, hat, candidates)
+        return evaluation_results, risk_classification
+
+    async def _tiered_execute(
+        self,
+        risk_classification: RiskClassification,
+        proposal: Proposal,
+        trees: list[ConsequenceTree],
+    ) -> ExecutionResult:
+        """Execute based on risk tier."""
+        tier = risk_classification.tier
+
+        if tier == "GREEN":
+            execution = await self.executor.execute(proposal)
+            execution.risk_tier = "GREEN"
+            execution.risk_classification = risk_classification
+            return execution
+
+        if tier == "YELLOW":
+            return self.executor.build_confirmation(proposal, risk_classification, trees)
+
+        if tier == "ORANGE":
+            return await self.executor.build_escalation(proposal, risk_classification)
+
+        # RED
+        return self.executor.build_refusal(proposal, risk_classification, trees)
 
     def _build_response(self, execution: ExecutionResult) -> str:
         """Build a user-facing response from the execution result."""
@@ -213,7 +303,7 @@ class AgentLoop:
         parts = [result.message]
         if result.data and isinstance(result.data, dict):
             for key, value in result.data.items():
-                if key not in ("applied",) and value is not None:
+                if key not in ("applied", "requires_confirmation") and value is not None:
                     parts.append(f"  {key}: {value}")
 
         return "\n".join(parts)
