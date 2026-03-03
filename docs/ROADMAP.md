@@ -1,38 +1,38 @@
 # Sophia Roadmap
 
-## Active Work
+## Completed
+
+### Phase 1: Foundation
+
+Hat system, LLM provider abstraction (Anthropic, Ollama), input gate, action proposer, tool system, executor, FastAPI skeleton, and orchestration loop.
+
+### Phase 2: Consequence Engine
+
+Depth-first consequence tree generation, tree analysis utilities (worst path, catastrophic branches, stakeholder impact), and pipeline integration with heuristic risk scoring.
+
+### Phase 3: Evaluation Panel
+
+Four independent evaluators (self-interest, tribal, domain, authority), deterministic risk classifier with weighted scoring, and tiered executor (GREEN/YELLOW/ORANGE/RED).
+
+### Phase 4: Chat UI
+
+Vite + React + TypeScript + Tailwind stack, WebSocket events during pipeline execution, chat interface with expandable decision trails, hat selector, and pipeline visualization.
+
+### Phase 5: Audit and Feedback
+
+Append-only audit database (SQLite dev, PostgreSQL production), ORM models for decisions/proposals/trees/evaluations/outcomes/feedback, hat config snapshots, outcome tracking, and API endpoints.
+
+### Phase 6: Memory System
+
+Three-tier memory (working/episodic/long-term) backed by SurrealDB, MemoryProvider interface with mock for tests, LLM-based memory extractor, recall at pipeline start, and persist after completion.
 
 ### Conversational Bypass (ADR-017)
 
-The pipeline currently forces every input through tool selection. Greetings, questions, and other non-actionable messages get routed to arbitrary tools. The proposer needs a "converse" candidate type that bypasses tool execution and generates a direct conversational response. This also skips consequence tree generation, evaluation, and risk classification for non-actionable inputs.
+Proposer "converse" candidate type that bypasses consequence tree generation, evaluation, and risk classification for non-actionable inputs. LLM decides when to bypass (no hardcoded keyword matching).
 
 ### Response Generation (ADR-018)
 
-After tool execution, raw ToolResult data (Python dicts) is dumped directly into the chat. A new response generator component sits between the executor and final output. It takes the original message, tool result, hat context, and memory context, then makes an LLM call to produce natural language. Applies to all tiers: GREEN gets a conversational response incorporating data, YELLOW gets an explanation of what needs confirmation and why, ORANGE gets an escalation explanation, RED gets a refusal citing specific concerns.
-
----
-
-## Planned: Phase 5 (Audit and Feedback)
-
-Persistent decision logging, outcome tracking, and feedback loops. See 05-audit.md for full spec.
-
-- Database schema for decisions, proposals, trees, evaluations, outcomes, feedback
-- Append-only immutable audit log
-- Outcome tracking: compare predicted consequences vs actual
-- Feedback loop: analyze human overrides on YELLOW/ORANGE for prompt tuning
-- API endpoints for querying audit history
-
-## Planned: Phase 6 (Memory System)
-
-Three-tier memory backed by SurrealDB, independent from the Hat system. See 06-memory-system.md and ADRs 012-016 for full design.
-
-- MemoryProvider interface (same pattern as LLMProvider)
-- SurrealDB implementation with document + graph + vector support
-- MockMemoryProvider for tests
-- Memory extractor: LLM calls to convert conversations into structured episodes and entities
-- Memory recall flow: query at interaction start, inject relevant context
-- Memory storage: extract and persist after pipeline completes
-- Remove legacy sophia/memory/store.py
+ResponseGenerator component between executor and final output. Converts raw tool results to natural language via LLM. Tier-aware: GREEN (confirm action), YELLOW (explain confirmation), ORANGE (explain escalation), RED (cite concerns and refuse). Includes dedicated converse path for conversational bypass.
 
 ---
 

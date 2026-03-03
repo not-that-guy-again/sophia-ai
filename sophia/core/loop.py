@@ -284,14 +284,19 @@ class AgentLoop:
         )
 
         # Step 6: Generate natural language response (ADR-018)
-        response = await self.response_generator.generate(
-            user_message=message,
-            risk_tier=execution.risk_tier,
-            action_taken=execution.action_taken.tool_name,
-            action_reasoning=execution.action_taken.reasoning,
-            tool_result_message=execution.tool_result.message,
-            tool_result_data=execution.tool_result.data if isinstance(execution.tool_result.data, dict) else None,
-        )
+        # GREEN/YELLOW: pass through response generator for natural language
+        # ORANGE/RED: build_escalation/build_refusal already produce human-readable messages
+        if execution.risk_tier in ("GREEN", "YELLOW"):
+            response = await self.response_generator.generate(
+                user_message=message,
+                risk_tier=execution.risk_tier,
+                action_taken=execution.action_taken.tool_name,
+                action_reasoning=execution.action_taken.reasoning,
+                tool_result_message=execution.tool_result.message,
+                tool_result_data=execution.tool_result.data if isinstance(execution.tool_result.data, dict) else None,
+            )
+        else:
+            response = execution.tool_result.message
 
         pipeline_result = PipelineResult(
             intent=intent,

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from sophia.hats.loader import discover_hats, load_hat, load_hat_tools
 from sophia.hats.schema import HatConfig, HatManifest
+from sophia.tools.converse import ConverseTool
 from sophia.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,10 @@ class HatRegistry:
         tools = load_hat_tools(hat_config)
         for tool in tools:
             self.tool_registry.register(tool)
+
+        # Register framework-level converse tool so the proposer LLM sees it
+        # as a structured definition alongside hat tools
+        self.tool_registry.register(ConverseTool())
 
         self._active = hat_config
         logger.info(

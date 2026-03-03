@@ -45,6 +45,18 @@ class Executor:
             )
 
         candidate = proposal.candidates[0]
+
+        # Conversational bypass — never call the tool registry for "converse"
+        if candidate.tool_name == "converse":
+            logger.info("Executor: converse candidate, skipping tool registry")
+            return ExecutionResult(
+                action_taken=candidate,
+                tool_result=ToolResult(
+                    success=True, data=None, message="Conversational response"
+                ),
+                risk_tier="GREEN",
+            )
+
         logger.info(
             "Executing top candidate: %s (reasoning: %s)",
             candidate.tool_name,

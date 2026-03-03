@@ -3,7 +3,25 @@
 import pytest
 
 from sophia.core.response_generator import ResponseGenerator
+from sophia.llm.prompts.core.response import RESPONSE_SYSTEM_PROMPT
 from tests.conftest import MockLLMProvider
+
+
+# --- Prompt quality tests: verify prompts prevent raw data leakage ---
+
+
+def test_response_prompt_forbids_raw_data():
+    """The response prompt must explicitly forbid JSON, dicts, and raw data."""
+    prompt_lower = RESPONSE_SYSTEM_PROMPT.lower()
+    assert "never" in prompt_lower or "do not" in prompt_lower
+    assert "json" in prompt_lower
+    assert "dict" in prompt_lower or "data structure" in prompt_lower
+
+
+def test_response_prompt_forbids_tool_names():
+    """The response prompt must instruct the LLM to never mention tool names."""
+    prompt_lower = RESPONSE_SYSTEM_PROMPT.lower()
+    assert "tool name" in prompt_lower
 
 
 @pytest.mark.asyncio

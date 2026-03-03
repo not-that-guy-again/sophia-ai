@@ -38,7 +38,7 @@ def test_tools_endpoint():
     response = client.get("/tools")
     assert response.status_code == 200
     tools = response.json()
-    assert len(tools) == 10
+    assert len(tools) == 11
     names = {t["name"] for t in tools}
     assert "look_up_order" in names
     assert "offer_full_refund" in names

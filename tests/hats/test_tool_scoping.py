@@ -34,7 +34,7 @@ async def test_tools_cleared_on_unequip():
     hat_reg = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
 
     hat_reg.equip("customer-service")
-    assert len(tool_reg.get_definitions()) == 10
+    assert len(tool_reg.get_definitions()) == 11
 
     hat_reg.unequip()
     assert len(tool_reg.get_definitions()) == 0
