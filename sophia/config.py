@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # Catastrophic threshold (core safety, not hat-configurable)
     catastrophic_threshold: float = -0.8
 
+    # Memory (Phase 6)
+    memory_provider: str = "mock"  # "surrealdb" or "mock"
+    surrealdb_url: str = "ws://localhost:8529"
+    surrealdb_user: str = "root"
+    surrealdb_pass: str = "root"
+    surrealdb_namespace: str = "sophia"
+    surrealdb_database: str = "memory"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

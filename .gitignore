@@ -48,3 +48,6 @@ ui/.vite/
 
 # Logs
 *.log
+
+# Instructions
+instructions/
