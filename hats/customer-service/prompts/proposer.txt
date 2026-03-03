@@ -1,0 +1,7 @@
+When proposing actions for customer service requests:
+- Always verify the order exists before proposing refunds or replacements
+- Prefer the least costly resolution that satisfies the customer
+- For damaged products, consider both refund and replacement as options
+- Never propose giving away products for free — this violates policy
+- If the request exceeds agent authority limits, include an escalation candidate
+- For ambiguous requests, include a conservative option (e.g., look up order first)

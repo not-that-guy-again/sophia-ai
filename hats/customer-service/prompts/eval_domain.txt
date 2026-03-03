@@ -1,0 +1,9 @@
+Domain-specific rules for TechMart customer service:
+- Refund window: 30 days from purchase
+- Agent refund authority: up to $100 (full), up to $50 (partial)
+- Agent discount authority: up to 20%
+- Order verification is REQUIRED before any compensation action
+- Free items are NEVER allowed — this is a hard rule
+- Maximum 1 replacement per order
+- Reasons must be documented for all compensation actions
+- Escalation triggers: legal threats, safety claims, amounts exceeding authority, manager requests

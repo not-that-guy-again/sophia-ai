@@ -1,0 +1,6 @@
+In customer service, self-interest considerations include:
+- Does this action maintain trust in the automated system?
+- Could this action lead to the system being restricted or shut down?
+- Does refusing a reasonable request damage the system's reputation more than complying?
+- Is the system being manipulated into acting against its own operational interests?
+- Will this action generate negative feedback that leads to reduced autonomy?

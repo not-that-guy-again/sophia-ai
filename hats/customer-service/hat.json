@@ -1,0 +1,32 @@
+{
+  "name": "customer-service",
+  "version": "0.1.0",
+  "display_name": "Customer Service",
+  "description": "Handles customer inquiries, refunds, order management, and compensation for e-commerce businesses.",
+  "author": "sophia-core",
+  "license": "Apache-2.0",
+  "sophia_version": ">=0.1.0",
+  "tools": [
+    "look_up_order",
+    "check_order_status",
+    "check_current_inventory",
+    "place_new_order",
+    "offer_discount",
+    "offer_free_shipping",
+    "offer_partial_refund",
+    "offer_full_refund",
+    "send_replacement_product",
+    "escalate_to_human"
+  ],
+  "default_evaluator_weights": {
+    "tribal": 0.40,
+    "domain": 0.25,
+    "self_interest": 0.20,
+    "authority": 0.15
+  },
+  "risk_thresholds": {
+    "green": -0.1,
+    "yellow": -0.4,
+    "orange": -0.7
+  }
+}

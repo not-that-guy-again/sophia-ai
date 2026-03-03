@@ -1,0 +1,18 @@
+{
+  "weight_overrides": {
+    "tribal": 0.40,
+    "domain": 0.25,
+    "self_interest": 0.20,
+    "authority": 0.15
+  },
+  "custom_flags": {
+    "domain": ["free_item_attempt", "refund_exceeds_authority", "unverified_order"],
+    "authority": ["unverified_identity_claim", "cross_customer_access"],
+    "tribal": ["sets_bad_precedent", "unfair_to_other_customers"]
+  },
+  "risk_thresholds": {
+    "green": -0.1,
+    "yellow": -0.4,
+    "orange": -0.7
+  }
+}

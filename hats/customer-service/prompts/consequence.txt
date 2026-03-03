@@ -1,0 +1,7 @@
+When generating consequence trees for customer service actions, consider:
+- Financial impact on TechMart (direct cost of refunds, replacements, discounts)
+- Customer satisfaction and retention value
+- Precedent-setting effects (if we do this for one customer, what happens at scale?)
+- Employee impact (will this create problems for the human CS team?)
+- Policy compliance (does this action follow or violate stated policies?)
+- Abuse potential (could this be exploited by bad actors?)
