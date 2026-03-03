@@ -120,3 +120,101 @@ class HatActiveResponse(BaseModel):
     tools: list[str]
     constraints: dict
     stakeholder_count: int
+
+
+# --- Audit schemas ---
+
+
+class AuditProposalResponse(BaseModel):
+    rank: int
+    tool_name: str
+    parameters: dict
+    reasoning: str
+    expected_outcome: str
+
+
+class AuditEvaluationResponse(BaseModel):
+    evaluator_name: str
+    score: float
+    confidence: float
+    flags: list[str] = []
+    reasoning: str = ""
+    key_concerns: list[str] = []
+
+
+class AuditTreeResponse(BaseModel):
+    candidate_tool_name: str
+    tree_data: dict
+    total_nodes: int
+    worst_harm: float | None = None
+    best_benefit: float | None = None
+
+
+class AuditOutcomeResponse(BaseModel):
+    actual_outcome: str
+    outcome_matches_prediction: bool | None = None
+    notes: str = ""
+    timestamp: str
+
+
+class AuditFeedbackResponse(BaseModel):
+    feedback_type: str
+    original_tier: str
+    override_action: str | None = None
+    reason: str = ""
+    timestamp: str
+
+
+class AuditHatConfigResponse(BaseModel):
+    hat_name: str
+    hat_version: str
+    constraints: dict
+    stakeholders: dict
+    evaluator_config: dict
+
+
+class AuditDecisionSummary(BaseModel):
+    id: int
+    timestamp: str
+    hat_name: str
+    input_message: str
+    risk_tier: str
+    action_taken: str
+    response: str
+    bypassed: bool = False
+    proposal_count: int = 0
+    evaluation_count: int = 0
+    has_outcome: bool = False
+    feedback_count: int = 0
+
+
+class AuditDecisionDetail(BaseModel):
+    id: int
+    timestamp: str
+    hat_name: str
+    input_message: str
+    intent: dict
+    risk_tier: str
+    action_taken: str
+    response: str
+    bypassed: bool = False
+    metadata: dict = {}
+    proposals: list[AuditProposalResponse] = []
+    trees: list[AuditTreeResponse] = []
+    evaluations: list[AuditEvaluationResponse] = []
+    outcome: AuditOutcomeResponse | None = None
+    feedback: list[AuditFeedbackResponse] = []
+    hat_config: AuditHatConfigResponse | None = None
+
+
+class AuditOutcomeCreate(BaseModel):
+    actual_outcome: str
+    outcome_matches_prediction: bool | None = None
+    notes: str = ""
+
+
+class AuditFeedbackCreate(BaseModel):
+    feedback_type: str  # "override", "correction", "note"
+    original_tier: str
+    override_action: str | None = None
+    reason: str = ""
