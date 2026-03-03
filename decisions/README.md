@@ -17,21 +17,24 @@ Each ADR follows a consistent structure:
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [001](001-propose-then-evaluate-pipeline.md) | Propose-then-evaluate pipeline | Accepted |
-| [002](002-domain-agnostic-hat-system.md) | Domain-agnostic Hat system | Accepted |
-| [003](003-depth-first-consequence-trees.md) | Depth-first consequence trees | Accepted |
-| [004](004-four-independent-evaluators.md) | Four independent evaluators | Accepted |
-| [005](005-tribal-veto-power.md) | Tribal evaluator veto power | Accepted |
-| [006](006-deterministic-risk-classification.md) | Deterministic risk classification | Accepted |
-| [007](007-four-tier-autonomy.md) | Four-tier autonomy model | Accepted |
-| [008](008-uncertainty-bumps-up.md) | Uncertainty bumps up, never down | Accepted |
-| [009](009-llm-provider-abstraction.md) | LLM provider abstraction | Accepted |
-| [010](010-tool-scoping-per-hat.md) | Tool scoping per hat | Accepted |
-| [011](011-audit-trail.md) | Immutable audit trail | Accepted |
-| [012](012-memory-independent-from-hats.md) | Memory system independent from Hats | Accepted |
-| [013](013-three-tier-memory-model.md) | Three-tier memory model | Accepted |
-| [014](014-surrealdb-memory-database.md) | SurrealDB as the memory database | Accepted |
-| [015](015-memory-provider-abstraction.md) | MemoryProvider abstraction interface | Accepted |
-| [016](016-three-system-data-architecture.md) | Three-system data architecture | Accepted |
-| [017](017-conversational-bypass.md) | Conversational bypass in the proposer | Accepted |
-| [018](018-response-generation.md) | LLM-based response generation | Accepted |
+| [001](ADR-001-propose-then-evaluate-pipeline.md) | Propose-then-evaluate pipeline | Accepted |
+| [002](ADR-002-domain-agnostic-hat-system.md) | Domain-agnostic Hat system | Accepted |
+| [003](ADR-003-depth-first-consequence-trees.md) | Depth-first consequence trees | Accepted |
+| [004](ADR-004-four-independent-evaluators.md) | Four independent evaluators | Accepted |
+| [005](ADR-005-tribal-veto-power.md) | Tribal evaluator veto power | Accepted |
+| [006](ADR-006-deterministic-risk-classification.md) | Deterministic risk classification | Accepted |
+| [007](ADR-007-four-tier-autonomy.md) | Four-tier autonomy model | Accepted |
+| [008](ADR-008-uncertainty-bumps-up.md) | Uncertainty bumps up, never down | Accepted |
+| [009](ADR-009-llm-provider-abstraction.md) | LLM provider abstraction | Accepted |
+| [010](ADR-010-tool-scoping-per-hat.md) | Tool scoping per hat | Accepted |
+| [011](ADR-011-audit-trail.md) | Immutable audit trail | Accepted |
+| [012](ADR-012-memory-independent-from-hats.md) | Memory system independent from Hats | Accepted |
+| [013](ADR-013-three-tier-memory-model.md) | Three-tier memory model | Accepted |
+| [014](ADR-014-surrealdb-memory-database.md) | SurrealDB as the memory database | Accepted |
+| [015](ADR-015-memory-provider-abstraction.md) | MemoryProvider abstraction interface | Accepted |
+| [016](ADR-016-three-system-data-architecture.md) | Three-system data architecture | Accepted |
+| [017](ADR-017-conversational-bypass.md) | Conversational bypass in the proposer | Accepted |
+| [018](ADR-018-response-generation.md) | LLM-based response generation | Accepted |
+| [019](ADR-019-constitution-based-identity.md) | Constitution-based identity and voice | Accepted |
+| [020](ADR-020-preflight-parameter-gate.md) | Gather parameters before consequence engine | Accepted |
+| [021](ADR-021-preflight-acknowledgement.md) | Acknowledge users before long-running tasks | Accepted |
