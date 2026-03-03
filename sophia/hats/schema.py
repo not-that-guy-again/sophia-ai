@@ -30,6 +30,7 @@ class HatManifest(BaseModel):
             "orange": -0.7,
         }
     )
+    placeholder_patterns: list[str] = Field(default_factory=list)
 
 
 class EvaluatorConfig(BaseModel):

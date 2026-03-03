@@ -16,6 +16,7 @@ from sophia.core.evaluators import (
 )
 from sophia.core.executor import ExecutionResult, Executor
 from sophia.core.input_gate import InputGate, Intent
+from sophia.core.parameter_gate import ParameterGate
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
 from sophia.core.risk_classifier import RiskClassification, classify
@@ -175,6 +176,14 @@ class AgentLoop:
             AuthorityEvaluator(llm=self.llm, hat_config=hat),
         ]
 
+        extra_placeholders = (
+            set(hat.manifest.placeholder_patterns) if hat else set()
+        )
+        self.parameter_gate = ParameterGate(
+            tool_registry=self.tool_registry,
+            extra_placeholders=extra_placeholders,
+        )
+
         self.executor = Executor(registry=self.tool_registry)
         self.response_generator = ResponseGenerator(llm=self.llm, hat_config=hat)
         self.memory_extractor = MemoryExtractor(
@@ -246,10 +255,31 @@ class AgentLoop:
         for i, c in enumerate(proposal.candidates):
             logger.info("  Candidate %d: %s — %s", i + 1, c.tool_name, c.reasoning[:80])
 
+        # Step 2.5: Parameter gate (ADR-019)
+        gate_result = self.parameter_gate.validate(proposal)
+        gate_metadata = {
+            "parameter_gate": [
+                {
+                    "tool_name": v.candidate.tool_name,
+                    "passed": v.passed,
+                    "failures": v.failures,
+                }
+                for v in gate_result.validations
+            ]
+        }
+        if gate_result.promoted_converse or len(gate_result.surviving_candidates) < len(gate_result.original_candidates):
+            proposal = Proposal(intent=proposal.intent, candidates=gate_result.surviving_candidates)
+            logger.info(
+                "Parameter gate filtered %d candidates",
+                len(gate_result.original_candidates) - len(gate_result.surviving_candidates),
+            )
+
         # Check for conversational bypass (ADR-017)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
         if top_candidate and top_candidate.tool_name == CONVERSE_TOOL_NAME:
-            return await self._handle_converse(message, intent, proposal, hat_name)
+            result = await self._handle_converse(message, intent, proposal, hat_name)
+            result.metadata.update(gate_metadata)
+            return result
 
         # Step 3: Generate consequence trees for each candidate
         consequence_trees: list[ConsequenceTree] = []
@@ -306,10 +336,14 @@ class AgentLoop:
             risk_classification=risk_classification,
             execution=execution,
             response=response,
-            metadata={"hat": hat_name, "memory_context": {
-                "entities_recalled": len(memory_context.get("entities", [])),
-                "episodes_recalled": len(memory_context.get("episodes", [])),
-            }},
+            metadata={
+                "hat": hat_name,
+                "memory_context": {
+                    "entities_recalled": len(memory_context.get("entities", [])),
+                    "episodes_recalled": len(memory_context.get("episodes", [])),
+                },
+                **gate_metadata,
+            },
         )
 
         # Step 8: Memory persist — extract and store
