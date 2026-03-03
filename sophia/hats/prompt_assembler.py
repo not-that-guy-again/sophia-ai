@@ -13,6 +13,8 @@ STAGE_TO_PROMPT_KEY = {
     "eval_tribal": "eval_tribal",
     "eval_domain": "eval_domain",
     "eval_authority": "eval_authority",
+    "response": "system",
+    "memory_extract": "system",
 }
 
 

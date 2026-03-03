@@ -28,3 +28,10 @@ Each ADR follows a consistent structure:
 | [009](009-llm-provider-abstraction.md) | LLM provider abstraction | Accepted |
 | [010](010-tool-scoping-per-hat.md) | Tool scoping per hat | Accepted |
 | [011](011-audit-trail.md) | Immutable audit trail | Accepted |
+| [012](012-memory-independent-from-hats.md) | Memory system independent from Hats | Accepted |
+| [013](013-three-tier-memory-model.md) | Three-tier memory model | Accepted |
+| [014](014-surrealdb-memory-database.md) | SurrealDB as the memory database | Accepted |
+| [015](015-memory-provider-abstraction.md) | MemoryProvider abstraction interface | Accepted |
+| [016](016-three-system-data-architecture.md) | Three-system data architecture | Accepted |
+| [017](017-conversational-bypass.md) | Conversational bypass in the proposer | Accepted |
+| [018](018-response-generation.md) | LLM-based response generation | Accepted |
