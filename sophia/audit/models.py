@@ -30,6 +30,8 @@ class Decision(Base):
     action_taken: Mapped[str] = mapped_column(String(200))
     response: Mapped[str] = mapped_column(Text)
     bypassed: Mapped[bool] = mapped_column(default=False)
+    preflight_ack: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    preflight_ack_at: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
 
     proposals: Mapped[list["DecisionProposal"]] = relationship(

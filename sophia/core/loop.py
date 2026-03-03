@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,7 @@ from sophia.core.evaluators import (
 from sophia.core.executor import ExecutionResult, Executor
 from sophia.core.input_gate import InputGate, Intent
 from sophia.core.parameter_gate import ParameterGate
+from sophia.core.preflight_ack import maybe_generate_ack
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
 from sophia.core.risk_classifier import RiskClassification, classify
@@ -88,6 +91,8 @@ class PipelineResult:
     execution: ExecutionResult
     response: str
     bypassed: bool = False
+    preflight_ack: str | None = None
+    preflight_ack_at: float | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -106,6 +111,8 @@ class PipelineResult:
             },
             "response": self.response,
             "bypassed": self.bypassed,
+            "preflight_ack": self.preflight_ack,
+            "preflight_ack_at": self.preflight_ack_at,
             "metadata": self.metadata,
         }
 
@@ -240,7 +247,11 @@ class AgentLoop:
         except Exception:
             logger.exception("Memory persist failed (non-fatal)")
 
-    async def process(self, message: str) -> PipelineResult:
+    async def process(
+        self,
+        message: str,
+        on_preflight_ack: Callable[[str], Awaitable[None]] | None = None,
+    ) -> PipelineResult:
         """Run a message through the full pipeline."""
         hat = self.hat_registry.get_active()
         hat_name = hat.name if hat else "none"
@@ -279,6 +290,20 @@ class AgentLoop:
                 "Parameter gate filtered %d candidates",
                 len(gate_result.original_candidates) - len(gate_result.surviving_candidates),
             )
+
+        # Step 2.6: Pre-flight acknowledgment (ADR-021)
+        preflight_ack = maybe_generate_ack(
+            intent=intent,
+            candidates=proposal.candidates,
+            tool_registry=self.tool_registry,
+            hat_config=hat,
+        )
+        preflight_ack_at: float | None = None
+        if preflight_ack:
+            preflight_ack_at = time.time()
+            logger.info("Preflight ack: %s", preflight_ack)
+            if on_preflight_ack:
+                await on_preflight_ack(preflight_ack)
 
         # Check for conversational bypass (ADR-017)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
@@ -346,6 +371,8 @@ class AgentLoop:
             risk_classification=risk_classification,
             execution=execution,
             response=response,
+            preflight_ack=preflight_ack,
+            preflight_ack_at=preflight_ack_at,
             metadata={
                 "hat": hat_name,
                 "memory_context": {

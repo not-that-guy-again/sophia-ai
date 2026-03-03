@@ -28,6 +28,18 @@ export default function MessageBubble({ message, onApprove, onDecline }: Props) 
 
   const trace = message.trace;
 
+  if (message.isAck) {
+    return (
+      <div className="flex justify-start">
+        <div className="max-w-[85%]">
+          <div className="animate-pulse rounded-2xl rounded-bl-md bg-gray-800/70 px-4 py-3 text-sm text-gray-300 italic">
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] space-y-2">

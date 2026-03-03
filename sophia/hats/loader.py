@@ -58,7 +58,8 @@ def load_hat(hat_path: Path) -> HatConfig:
         raise FileNotFoundError(f"No hat.json found at {hat_path}")
 
     with open(manifest_path) as f:
-        manifest = HatManifest(**json.load(f))
+        raw_manifest = json.load(f)
+    manifest = HatManifest(**raw_manifest)
 
     # Load constraints
     constraints = _load_json(hat_path / "constraints.json")
@@ -95,6 +96,7 @@ def load_hat(hat_path: Path) -> HatConfig:
         stakeholders=stakeholders,
         evaluator_config=evaluator_config,
         prompts=prompts,
+        raw_manifest=raw_manifest,
     )
 
 

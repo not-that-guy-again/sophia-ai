@@ -1,7 +1,7 @@
-# ADR-019: Pre-flight parameter gate
+# ADR-020: Pre-flight parameter gate
 
 **Date:** 2026-03
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
 

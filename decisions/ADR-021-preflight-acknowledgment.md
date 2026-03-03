@@ -1,7 +1,7 @@
-# ADR-020: Pre-flight acknowledgment ("mirror on the elevator door")
+# ADR-021: Pre-flight acknowledgment ("mirror on the elevator door")
 
-**Date:** 2026-03  
-**Status:** Proposed
+**Date:** 2026-03
+**Status:** Accepted
 
 ## Context
 

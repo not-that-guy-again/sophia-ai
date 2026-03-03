@@ -109,6 +109,8 @@ async def store_decision_with_hat(
         action_taken=result.execution.action_taken.tool_name,
         response=result.response,
         bypassed=result.bypassed,
+        preflight_ack=result.preflight_ack,
+        preflight_ack_at=result.preflight_ack_at,
         metadata_=result.metadata,
     )
     session.add(decision)

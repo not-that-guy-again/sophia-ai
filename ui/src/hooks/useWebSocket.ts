@@ -88,6 +88,20 @@ export function useWebSocket(url: string): UseSophiaSocket {
         // Informational only on connect
         break;
 
+      case "preflight_ack": {
+        const ackMsg: ChatMessage = {
+          id: genId(),
+          role: "assistant",
+          content: event.data.message,
+          trace: null,
+          tier: null,
+          timestamp: Date.now(),
+          isAck: true,
+        };
+        setMessages((prev) => [...prev, ackMsg]);
+        break;
+      }
+
       case "intent_parsed":
         trace.intent = event.data;
         setCurrentStage("intent_parsed");
@@ -131,7 +145,10 @@ export function useWebSocket(url: string): UseSophiaSocket {
           timestamp: Date.now(),
           confirmationStatus: tier === "YELLOW" ? "pending" : undefined,
         };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => {
+          const withoutAck = prev.filter((m) => !m.isAck);
+          return [...withoutAck, assistantMsg];
+        });
         // Reset for next round
         traceRef.current = emptyTrace();
         setCurrentTrace(emptyTrace());

@@ -36,5 +36,5 @@ Each ADR follows a consistent structure:
 | [017](ADR-017-conversational-bypass.md) | Conversational bypass in the proposer | Accepted |
 | [018](ADR-018-response-generation.md) | LLM-based response generation | Accepted |
 | [019](ADR-019-constitution-based-identity.md) | Constitution-based identity and voice | Accepted |
-| [020](ADR-020-preflight-parameter-gate.md) | Gather parameters before consequence engine | Accepted |
-| [021](ADR-021-preflight-acknowledgement.md) | Acknowledge users before long-running tasks | Accepted |
+| [020](ADR-020-preflight-parameter-gate.md) | Pre-flight parameter gate | Accepted |
+| [021](ADR-021-preflight-acknowledgment.md) | Pre-flight acknowledgment | Accepted |
