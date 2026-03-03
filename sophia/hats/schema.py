@@ -66,6 +66,7 @@ class HatConfig(BaseModel):
     stakeholders: StakeholderRegistry = Field(default_factory=StakeholderRegistry)
     evaluator_config: EvaluatorConfig = Field(default_factory=EvaluatorConfig)
     prompts: dict[str, str] = Field(default_factory=dict)
+    raw_manifest: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def path(self) -> Path:

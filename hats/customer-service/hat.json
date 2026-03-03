@@ -28,5 +28,27 @@
     "green": -0.1,
     "yellow": -0.4,
     "orange": -0.7
+  },
+  "ack_enabled": true,
+  "ack_financial_ceiling": 0.0,
+  "ack_templates": {
+    "order_status": [
+      "Let me pull up order {order_id} for you.",
+      "Checking on that now — one moment.",
+      "Got it, looking into order {order_id}."
+    ],
+    "refund_request": [
+      "Let me look into that for you.",
+      "One moment while I review this."
+    ],
+    "product_inquiry": [
+      "Let me check on that for you.",
+      "One moment while I look into that."
+    ],
+    "_default": [
+      "One moment while I look into that.",
+      "Let me check on that for you.",
+      "Got it — looking into that now."
+    ]
   }
 }

@@ -275,3 +275,69 @@ async def test_green_execution_uses_response_generator(mock_llm: MockLLMProvider
     # Response should be natural language from response_generator, not raw data
     assert result.response == "We currently have a wide selection of electronics in stock, including laptops, headphones, and gaming consoles."
     assert "{" not in result.response  # No JSON leakage
+
+
+@pytest.mark.asyncio
+async def test_converse_bypass_has_no_preflight_ack(mock_llm: MockLLMProvider, cs_hat_config):
+    """When the pipeline takes the conversational bypass path, preflight_ack is None."""
+    mock_llm.set_responses([
+        # 1. Input gate
+        json.dumps({
+            "action_requested": "general_inquiry",
+            "target": None,
+            "parameters": {},
+        }),
+        # 2. Proposer — selects converse
+        json.dumps({
+            "candidates": [{
+                "tool_name": "converse",
+                "parameters": {},
+                "reasoning": "User is asking a general question",
+                "expected_outcome": "Conversational response",
+            }]
+        }),
+        # 3. Response generator (converse path)
+        "Sure, I can help with that!",
+        # 4. Memory extractor
+        json.dumps({
+            "episode": {
+                "participants": ["customer", "agent"],
+                "summary": "General inquiry.",
+                "actions_taken": [],
+                "outcome": "Conversational exchange",
+            },
+            "entities": [],
+            "relationships": [],
+        }),
+    ])
+
+    from sophia.config import Settings
+    settings = Settings(
+        llm_provider="anthropic",
+        anthropic_api_key="test",
+        default_hat="customer-service",
+        memory_provider="mock",
+    )
+
+    memory = MockMemoryProvider()
+    loop = AgentLoop.__new__(AgentLoop)
+    loop.settings = settings
+    loop.llm = mock_llm
+    loop.memory = memory
+
+    from sophia.tools.registry import ToolRegistry
+    from sophia.hats.registry import HatRegistry
+    from pathlib import Path
+    loop.tool_registry = ToolRegistry()
+    loop.hat_registry = HatRegistry(
+        hats_dir=Path(settings.hats_dir),
+        tool_registry=loop.tool_registry,
+    )
+    loop.hat_registry.equip(settings.default_hat)
+    loop._rebuild_pipeline()
+
+    result = await loop.process("What can you help me with?")
+
+    assert result.bypassed is True
+    assert result.preflight_ack is None
+    assert result.preflight_ack_at is None

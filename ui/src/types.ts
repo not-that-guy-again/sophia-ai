@@ -101,12 +101,14 @@ export interface ChatMessage {
   tier: RiskTier | null;
   timestamp: number;
   confirmationStatus?: "pending" | "approved" | "declined";
+  isAck?: boolean;
 }
 
 // --- WebSocket event types ---
 
 export type WsEvent =
   | { event: "hat_equipped"; data: { name: string; display_name: string } }
+  | { event: "preflight_ack"; data: { message: string } }
   | { event: "intent_parsed"; data: Intent }
   | { event: "proposals_generated"; data: { candidates: CandidateAction[] } }
   | { event: "consequences_analyzed"; data: { trees: ConsequenceTree[] } }

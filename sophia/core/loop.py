@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from sophia.config import Settings
 from sophia.core.consequence import ConsequenceEngine, ConsequenceTree
+from sophia.core.constitution import load_constitution
 from sophia.core.evaluators import (
     AuthorityEvaluator,
     DomainEvaluator,
@@ -17,6 +20,7 @@ from sophia.core.evaluators import (
 from sophia.core.executor import ExecutionResult, Executor
 from sophia.core.input_gate import InputGate, Intent
 from sophia.core.parameter_gate import ParameterGate
+from sophia.core.preflight_ack import maybe_generate_ack
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
 from sophia.core.risk_classifier import RiskClassification, classify
@@ -87,6 +91,8 @@ class PipelineResult:
     execution: ExecutionResult
     response: str
     bypassed: bool = False
+    preflight_ack: str | None = None
+    preflight_ack_at: float | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -105,6 +111,8 @@ class PipelineResult:
             },
             "response": self.response,
             "bypassed": self.bypassed,
+            "preflight_ack": self.preflight_ack,
+            "preflight_ack_at": self.preflight_ack_at,
             "metadata": self.metadata,
         }
 
@@ -130,6 +138,9 @@ class AgentLoop:
 
         # Set up LLM provider
         self.llm = get_provider(self.settings)
+
+        # Load the Sophia Constitution once at startup
+        self.constitution = load_constitution()
 
         # Set up memory provider (injected or from config)
         self.memory = memory_provider or get_memory_provider(self.settings)
@@ -176,19 +187,19 @@ class AgentLoop:
             AuthorityEvaluator(llm=self.llm, hat_config=hat),
         ]
 
-        extra_placeholders = (
-            set(hat.manifest.placeholder_patterns) if hat else set()
-        )
+        extra_placeholders = set(hat.manifest.placeholder_patterns) if hat else set()
         self.parameter_gate = ParameterGate(
             tool_registry=self.tool_registry,
             extra_placeholders=extra_placeholders,
         )
 
         self.executor = Executor(registry=self.tool_registry)
-        self.response_generator = ResponseGenerator(llm=self.llm, hat_config=hat)
-        self.memory_extractor = MemoryExtractor(
-            llm=self.llm, memory=self.memory, hat_config=hat
+        self.response_generator = ResponseGenerator(
+            llm=self.llm,
+            hat_config=hat,
+            constitution=getattr(self, "constitution", ""),
         )
+        self.memory_extractor = MemoryExtractor(llm=self.llm, memory=self.memory, hat_config=hat)
 
     def equip_hat(self, hat_name: str) -> HatConfig:
         """Switch to a different hat and rebuild the pipeline."""
@@ -236,7 +247,11 @@ class AgentLoop:
         except Exception:
             logger.exception("Memory persist failed (non-fatal)")
 
-    async def process(self, message: str) -> PipelineResult:
+    async def process(
+        self,
+        message: str,
+        on_preflight_ack: Callable[[str], Awaitable[None]] | None = None,
+    ) -> PipelineResult:
         """Run a message through the full pipeline."""
         hat = self.hat_registry.get_active()
         hat_name = hat.name if hat else "none"
@@ -267,12 +282,28 @@ class AgentLoop:
                 for v in gate_result.validations
             ]
         }
-        if gate_result.promoted_converse or len(gate_result.surviving_candidates) < len(gate_result.original_candidates):
+        if gate_result.promoted_converse or len(gate_result.surviving_candidates) < len(
+            gate_result.original_candidates
+        ):
             proposal = Proposal(intent=proposal.intent, candidates=gate_result.surviving_candidates)
             logger.info(
                 "Parameter gate filtered %d candidates",
                 len(gate_result.original_candidates) - len(gate_result.surviving_candidates),
             )
+
+        # Step 2.6: Pre-flight acknowledgment (ADR-021)
+        preflight_ack = maybe_generate_ack(
+            intent=intent,
+            candidates=proposal.candidates,
+            tool_registry=self.tool_registry,
+            hat_config=hat,
+        )
+        preflight_ack_at: float | None = None
+        if preflight_ack:
+            preflight_ack_at = time.time()
+            logger.info("Preflight ack: %s", preflight_ack)
+            if on_preflight_ack:
+                await on_preflight_ack(preflight_ack)
 
         # Check for conversational bypass (ADR-017)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
@@ -299,12 +330,14 @@ class AgentLoop:
         evaluation_results, risk_classification = await self._run_evaluation_panel(
             top_tree, hat, intent, proposal.candidates
         )
-        logger.info("Risk classification: %s (score=%.2f)", risk_classification.tier, risk_classification.weighted_score)
+        logger.info(
+            "Risk classification: %s (score=%.2f)",
+            risk_classification.tier,
+            risk_classification.weighted_score,
+        )
 
         # Step 5: Tiered execution based on risk classification
-        execution = await self._tiered_execute(
-            risk_classification, proposal, consequence_trees
-        )
+        execution = await self._tiered_execute(risk_classification, proposal, consequence_trees)
 
         logger.info(
             "Result: %s (success=%s, tier=%s)",
@@ -323,7 +356,9 @@ class AgentLoop:
                 action_taken=execution.action_taken.tool_name,
                 action_reasoning=execution.action_taken.reasoning,
                 tool_result_message=execution.tool_result.message,
-                tool_result_data=execution.tool_result.data if isinstance(execution.tool_result.data, dict) else None,
+                tool_result_data=execution.tool_result.data
+                if isinstance(execution.tool_result.data, dict)
+                else None,
             )
         else:
             response = execution.tool_result.message
@@ -336,6 +371,8 @@ class AgentLoop:
             risk_classification=risk_classification,
             execution=execution,
             response=response,
+            preflight_ack=preflight_ack,
+            preflight_ack_at=preflight_ack_at,
             metadata={
                 "hat": hat_name,
                 "memory_context": {
@@ -429,7 +466,10 @@ class AgentLoop:
         for r in evaluation_results:
             logger.info(
                 "  %s: score=%.2f confidence=%.2f flags=%s",
-                r.evaluator_name, r.score, r.confidence, r.flags,
+                r.evaluator_name,
+                r.score,
+                r.confidence,
+                r.flags,
             )
 
         # Deterministic risk classification
