@@ -1,17 +1,14 @@
-from sophia.tools.base import Tool, ToolResult
+from dataclasses import asdict
 
-MOCK_INVENTORY = {
-    "PROD-001": {"product_id": "PROD-001", "name": "Wireless Headphones", "quantity_available": 150, "price": 79.99},
-    "PROD-002": {"product_id": "PROD-002", "name": "USB-C Cable", "quantity_available": 500, "price": 12.99},
-    "PROD-003": {"product_id": "PROD-003", "name": "PlayStation 5", "quantity_available": 5, "price": 499.99},
-    "PROD-004": {"product_id": "PROD-004", "name": "Laptop Stand", "quantity_available": 75, "price": 45.00},
-    "PROD-005": {"product_id": "PROD-005", "name": "Mechanical Keyboard", "quantity_available": 200, "price": 129.99},
-}
+from sophia.tools.base import Tool, ToolResult
 
 
 class CheckCurrentInventoryTool(Tool):
     name = "check_current_inventory"
-    description = "Check current inventory levels. Pass a product_id for a specific product, or omit for full inventory."
+    description = (
+        "Check current inventory levels. "
+        "Pass a product_id for a specific product, or omit for full inventory."
+    )
     parameters = {
         "type": "object",
         "properties": {
@@ -25,23 +22,21 @@ class CheckCurrentInventoryTool(Tool):
     authority_level = "agent"
     max_financial_impact = None
 
+    def inject_services(self, services):
+        self.inventory_service = services.get("inventory")
+
     async def execute(self, params: dict) -> ToolResult:
         product_id = params.get("product_id")
+        stocks = await self.inventory_service.check_stock(product_id)
 
-        if product_id:
-            product = MOCK_INVENTORY.get(product_id)
-            if product:
-                return ToolResult(
-                    success=True,
-                    data={"products": [product]},
-                    message=f"Inventory for {product['name']}: {product['quantity_available']} available",
-                )
+        if product_id and not stocks:
             return ToolResult(
                 success=False, data=None, message=f"Product {product_id} not found"
             )
 
-        return ToolResult(
-            success=True,
-            data={"products": list(MOCK_INVENTORY.values())},
-            message=f"Full inventory: {len(MOCK_INVENTORY)} products",
-        )
+        products = [asdict(s) for s in stocks]
+        if product_id:
+            msg = f"Inventory for {stocks[0].name}: {stocks[0].quantity_available} available"
+        else:
+            msg = f"Full inventory: {len(products)} products"
+        return ToolResult(success=True, data={"products": products}, message=msg)

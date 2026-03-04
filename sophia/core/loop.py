@@ -152,9 +152,9 @@ class AgentLoop:
             tool_registry=self.tool_registry,
         )
 
-        # Equip the default hat
-        self.hat_registry.equip(self.settings.default_hat)
-        self._rebuild_pipeline()
+        # Hat equipping is deferred to first process() or explicit equip_hat()
+        # because service initialization is async
+        self._hat_equipped = False
 
     def _rebuild_pipeline(self) -> None:
         """(Re)build pipeline components from the active hat."""
@@ -201,10 +201,18 @@ class AgentLoop:
         )
         self.memory_extractor = MemoryExtractor(llm=self.llm, memory=self.memory, hat_config=hat)
 
-    def equip_hat(self, hat_name: str) -> HatConfig:
+    async def _ensure_hat_equipped(self) -> None:
+        """Equip the default hat if not already done (deferred from __init__)."""
+        if not self._hat_equipped:
+            await self.hat_registry.equip(self.settings.default_hat)
+            self._rebuild_pipeline()
+            self._hat_equipped = True
+
+    async def equip_hat(self, hat_name: str) -> HatConfig:
         """Switch to a different hat and rebuild the pipeline."""
-        hat_config = self.hat_registry.equip(hat_name)
+        hat_config = await self.hat_registry.equip(hat_name)
         self._rebuild_pipeline()
+        self._hat_equipped = True
         return hat_config
 
     async def _recall_memory(self, message: str) -> dict:
@@ -253,6 +261,7 @@ class AgentLoop:
         on_preflight_ack: Callable[[str], Awaitable[None]] | None = None,
     ) -> PipelineResult:
         """Run a message through the full pipeline."""
+        await self._ensure_hat_equipped()
         hat = self.hat_registry.get_active()
         hat_name = hat.name if hat else "none"
         logger.info("Processing message (hat=%s): %s", hat_name, message[:100])

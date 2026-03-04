@@ -7,3 +7,10 @@ Domain-specific rules for TechMart customer service:
 - Maximum 1 replacement per order
 - Reasons must be documented for all compensation actions
 - Escalation triggers: legal threats, safety claims, amounts exceeding authority, manager requests
+- Cancellation: orders can be cancelled before shipment only
+- Returns: 30-day window from delivery date, maximum 1 active return per order
+- Return shipping: customer pays for "changed_mind", free for defective/wrong/not_as_described
+- Address changes: only for unshipped orders (pending or confirmed status)
+- Warranty checks: informational only, no direct financial impact
+- Product lookups: informational only
+- Customer search: requires at least one identifying parameter (email, phone, or name)

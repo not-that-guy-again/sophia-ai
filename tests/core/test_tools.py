@@ -8,7 +8,7 @@ async def test_look_up_order_found(tool_registry: ToolRegistry):
     result = await tool_registry.execute("look_up_order", {"order_id": "ORD-12345"})
     assert result.success
     assert result.data["order_id"] == "ORD-12345"
-    assert result.data["customer_name"] == "Jane Smith"
+    assert result.data["customer_id"] == "CUST-001"
 
 
 @pytest.mark.asyncio
@@ -58,7 +58,7 @@ async def test_escalation(tool_registry: ToolRegistry):
 
 def test_hat_registers_all_tools(tool_registry: ToolRegistry):
     definitions = tool_registry.get_definitions()
-    assert len(definitions) == 10
+    assert len(definitions) == 19
     names = {d["name"] for d in definitions}
     assert "look_up_order" in names
     assert "escalate_to_human" in names

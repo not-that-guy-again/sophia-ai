@@ -24,10 +24,11 @@ router = APIRouter()
 _agent_loop: AgentLoop | None = None
 
 
-def get_agent_loop() -> AgentLoop:
+async def get_agent_loop() -> AgentLoop:
     global _agent_loop
     if _agent_loop is None:
         _agent_loop = AgentLoop()
+    await _agent_loop._ensure_hat_equipped()
     return _agent_loop
 
 
@@ -38,7 +39,7 @@ async def health():
 
 @router.get("/tools", response_model=list[ToolDefinitionResponse])
 async def list_tools():
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
     return loop.tool_registry.get_definitions()
 
 
@@ -54,7 +55,7 @@ async def _log_audit(loop: AgentLoop, result, message: str) -> None:
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
     result = await loop.process(request.message)
     await _log_audit(loop, result, request.message)
     return result.to_dict()
@@ -66,7 +67,7 @@ async def chat(request: ChatRequest):
 @router.get("/hats", response_model=list[HatSummaryResponse])
 async def list_hats():
     """List all available hats."""
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
     manifests = loop.hat_registry.list_available()
     return [
         HatSummaryResponse(
@@ -83,7 +84,7 @@ async def list_hats():
 @router.get("/hats/active", response_model=HatActiveResponse)
 async def active_hat():
     """Get the currently equipped hat."""
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
     hat = loop.hat_registry.get_active()
     if hat is None:
         raise HTTPException(status_code=404, detail="No hat is currently equipped")
@@ -101,9 +102,9 @@ async def active_hat():
 @router.post("/hats/{hat_name}/equip", response_model=HatActiveResponse)
 async def equip_hat(hat_name: str):
     """Equip a different hat, switching tools and domain context."""
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
     try:
-        hat = loop.equip_hat(hat_name)
+        hat = await loop.equip_hat(hat_name)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return HatActiveResponse(
@@ -123,7 +124,7 @@ async def equip_hat(hat_name: str):
 @router.websocket("/ws/chat")
 async def websocket_chat(websocket: WebSocket):
     await websocket.accept()
-    loop = get_agent_loop()
+    loop = await get_agent_loop()
 
     try:
         # Notify client which hat is equipped

@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sophia.services.registry import ServiceRegistry
 
 
 @dataclass
@@ -22,6 +25,12 @@ class Tool(ABC):
     @abstractmethod
     async def execute(self, params: dict) -> ToolResult:
         """Execute the tool with the given parameters."""
+
+    def inject_services(self, services: "ServiceRegistry") -> None:
+        """Override to receive service instances. Called during hat equip.
+        Default implementation does nothing — tools that don't need
+        services are unaffected."""
+        pass
 
     def to_definition(self) -> dict:
         """Return the tool definition as a dict for LLM prompts."""

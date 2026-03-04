@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from sophia.api.audit_routes import router as audit_router
 from sophia.api.routes import router
+from sophia.api.webhook_routes import webhook_router
 from sophia.audit.database import close_db, init_db
 from sophia.config import settings
 
@@ -39,3 +40,4 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(audit_router)
+app.include_router(webhook_router)

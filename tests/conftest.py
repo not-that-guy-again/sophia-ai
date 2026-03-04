@@ -59,10 +59,16 @@ def cs_hat_config() -> HatConfig:
 
 
 @pytest.fixture
-def tool_registry(cs_hat_config: HatConfig) -> ToolRegistry:
+async def tool_registry(cs_hat_config: HatConfig) -> ToolRegistry:
     """Create a tool registry loaded with the customer-service hat's tools."""
+    from sophia.services.registry import ServiceRegistry
+
     registry = ToolRegistry()
+    service_registry = ServiceRegistry()
+    await service_registry.initialize(cs_hat_config.manifest.backends)
+
     tools = load_hat_tools(cs_hat_config)
     for tool in tools:
+        tool.inject_services(service_registry)
         registry.register(tool)
     return registry

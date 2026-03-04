@@ -100,8 +100,9 @@ async def test_converse_bypass_skips_pipeline(mock_llm: MockLLMProvider, cs_hat_
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("Hello!")
 
@@ -264,8 +265,9 @@ async def test_green_execution_uses_response_generator(mock_llm: MockLLMProvider
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("What products do you have in stock?")
 
@@ -333,8 +335,9 @@ async def test_converse_bypass_has_no_preflight_ack(mock_llm: MockLLMProvider, c
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("What can you help me with?")
 

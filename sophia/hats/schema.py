@@ -31,6 +31,8 @@ class HatManifest(BaseModel):
         }
     )
     placeholder_patterns: list[str] = Field(default_factory=list)
+    backends: dict[str, dict] = Field(default_factory=dict)
+    webhooks: dict[str, dict] = Field(default_factory=dict)
 
 
 class EvaluatorConfig(BaseModel):

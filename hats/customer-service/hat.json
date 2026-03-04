@@ -11,6 +11,15 @@
     "check_order_status",
     "check_current_inventory",
     "place_new_order",
+    "cancel_order",
+    "look_up_customer",
+    "get_customer_order_history",
+    "track_shipment",
+    "update_shipping_address",
+    "look_up_product",
+    "check_warranty_status",
+    "initiate_return",
+    "check_return_status",
     "offer_discount",
     "offer_free_shipping",
     "offer_partial_refund",
@@ -28,6 +37,24 @@
     "green": -0.1,
     "yellow": -0.4,
     "orange": -0.7
+  },
+  "backends": {
+    "order": { "provider": "mock", "config": {} },
+    "customer": { "provider": "mock", "config": {} },
+    "shipping": { "provider": "mock", "config": {} },
+    "inventory": { "provider": "mock", "config": {} },
+    "compensation": { "provider": "mock", "config": {} }
+  },
+  "webhooks": {
+    "shopify": {
+      "secret_env": "SHOPIFY_WEBHOOK_SECRET",
+      "events": {
+        "orders/create": { "action": "memory_update" },
+        "orders/cancelled": { "action": "memory_update" },
+        "orders/fulfilled": { "action": "memory_update" },
+        "refunds/create": { "action": "memory_update" }
+      }
+    }
   },
   "ack_enabled": true,
   "ack_financial_ceiling": 0.0,

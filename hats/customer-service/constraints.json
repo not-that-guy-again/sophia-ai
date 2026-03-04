@@ -8,7 +8,12 @@
     "require_order_verification": true,
     "require_reason_for_compensation": true,
     "free_items_allowed": false,
-    "max_replacements_per_order": 1
+    "max_replacements_per_order": 1,
+    "cancellation_policy": "Orders can be cancelled before shipment",
+    "return_window_days": 30,
+    "return_shipping_customer_pays": ["changed_mind"],
+    "return_shipping_free": ["defective", "wrong_item", "not_as_described"],
+    "address_change_policy": "Only for unshipped orders (pending or confirmed status)"
   },
   "escalation_triggers": [
     "customer threatens legal action",

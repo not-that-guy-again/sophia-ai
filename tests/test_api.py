@@ -38,7 +38,7 @@ def test_tools_endpoint():
     response = client.get("/tools")
     assert response.status_code == 200
     tools = response.json()
-    assert len(tools) == 11
+    assert len(tools) == 20
     names = {t["name"] for t in tools}
     assert "look_up_order" in names
     assert "offer_full_refund" in names
@@ -62,7 +62,7 @@ def test_active_hat_endpoint():
     data = response.json()
     assert data["name"] == "customer-service"
     assert data["display_name"] == "Customer Service"
-    assert len(data["tools"]) == 10
+    assert len(data["tools"]) == 19
     assert data["stakeholder_count"] == 4
 
 
@@ -121,7 +121,7 @@ def test_chat_endpoint():
     with patch.object(routes, "get_agent_loop") as mock_get_loop:
         mock_loop = AsyncMock()
         mock_loop.process.return_value = mock_result
-        mock_get_loop.return_value = mock_loop
+        mock_get_loop.return_value = mock_loop  # AsyncMock auto-handles await
 
         response = client.post("/chat", json={"message": "Where is my order #12345?"})
 
