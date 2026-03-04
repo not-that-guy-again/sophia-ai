@@ -25,6 +25,8 @@
     "offer_partial_refund",
     "offer_full_refund",
     "send_replacement_product",
+    "notify_manager",
+    "request_approval",
     "escalate_to_human"
   ],
   "default_evaluator_weights": {
@@ -53,6 +55,20 @@
         "orders/cancelled": { "action": "memory_update" },
         "orders/fulfilled": { "action": "memory_update" },
         "refunds/create": { "action": "memory_update" }
+      }
+    }
+  },
+  "communications": {
+    "channels": {
+      "slack": {
+        "server_url_env": "SLACK_MCP_URL",
+        "server_name": "slack-mcp",
+        "auth_token_env": "SLACK_MCP_TOKEN"
+      },
+      "email": {
+        "server_url_env": "GMAIL_MCP_URL",
+        "server_name": "gmail-mcp",
+        "auth_token_env": "GMAIL_MCP_TOKEN"
       }
     }
   },
