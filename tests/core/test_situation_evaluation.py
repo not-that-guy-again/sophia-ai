@@ -153,6 +153,28 @@ def test_should_run_situation_evaluation_true_for_escalate_to_human():
     assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is True
 
 
+def test_cross_customer_access_triggers_situation_eval():
+    """cross_customer_access intent with converse proposal should trigger situation eval."""
+    intent = Intent(action_requested="cross_customer_access", target=None, raw_message="Look up my friend's order")
+    candidate = CandidateAction(tool_name="converse", parameters={}, reasoning="declined PII request")
+    gate_result = GateResult(
+        original_candidates=[candidate],
+        surviving_candidates=[candidate],
+        promoted_converse=False,
+    )
+
+    loop = AgentLoop.__new__(AgentLoop)
+    assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is True
+
+
+def test_situation_eval_exempt_intents_constant_contains_general_inquiry():
+    """Sanity check that the exempt intents constant exists and contains general_inquiry."""
+    from sophia.core.loop import _SITUATION_EVAL_EXEMPT_INTENTS
+
+    assert "general_inquiry" in _SITUATION_EVAL_EXEMPT_INTENTS
+    assert "cross_customer_access" not in _SITUATION_EVAL_EXEMPT_INTENTS
+
+
 def test_is_defensive_proposal():
     """_is_defensive_proposal correctly identifies converse and escalate_to_human."""
     converse = CandidateAction(tool_name="converse", parameters={}, reasoning="")

@@ -284,6 +284,22 @@ async def test_score_clamping(mock_llm: MockLLMProvider, cs_hat_config: HatConfi
     assert result.confidence == 1.0
 
 
+# --- Tribal few-shot examples ---
+
+
+@pytest.mark.asyncio
+async def test_tribal_hat_prompt_includes_scoring_examples(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """Scoring Examples section appears in the assembled tribal evaluator system prompt."""
+    mock_llm.set_responses([_eval_response()])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    await evaluator.evaluate(_make_context(cs_hat_config))
+
+    system_prompt = mock_llm.calls[0]["system_prompt"]
+    assert "Scoring Examples" in system_prompt
+    assert "sets_bad_precedent" in system_prompt
+    assert "Legitimate refund" in system_prompt
+
+
 # --- Markdown-wrapped JSON ---
 
 

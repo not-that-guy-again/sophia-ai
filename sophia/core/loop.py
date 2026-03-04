@@ -38,6 +38,10 @@ logger = logging.getLogger(__name__)
 CONVERSE_TOOL_NAME = "converse"
 DEFENSIVE_TOOL_NAMES = {CONVERSE_TOOL_NAME, "escalate_to_human"}
 
+# Intents that are genuinely non-actionable and should not trigger situation evaluation.
+# cross_customer_access is intentionally NOT in this set — it is action-bearing.
+_SITUATION_EVAL_EXEMPT_INTENTS = frozenset({"general_inquiry"})
+
 
 def _is_defensive_proposal(candidate) -> bool:
     """Return True if the candidate is a defensive (non-action) proposal."""
@@ -332,7 +336,9 @@ class AgentLoop:
 
         # Step 2.55: Escalation trigger gate — deterministic, no LLM
         escalation_result = check_escalation_triggers(
-            message, hat.constraints or {}
+            message,
+            hat.constraints or {},
+            conversation_history=conversation_history,
         )
         if escalation_result.triggered:
             logger.info(
@@ -361,7 +367,14 @@ class AgentLoop:
         # Check for defensive proposal requiring situation evaluation (ADR-030)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
         if top_candidate and _is_defensive_proposal(top_candidate):
-            if self._should_run_situation_evaluation(intent, top_candidate, gate_result):
+            # Run situation evaluation if:
+            # 1. Normal criteria (action-bearing intent, not gate-synthesized), OR
+            # 2. An escalation trigger fired (including inherited) — the floor must be applied
+            should_evaluate = (
+                self._should_run_situation_evaluation(intent, top_candidate, gate_result)
+                or escalation_result.triggered
+            )
+            if should_evaluate:
                 result = await self._handle_converse_with_evaluation(
                     message, intent, proposal, hat_name, hat,
                     conversation_history=conversation_history,
@@ -512,7 +525,7 @@ class AgentLoop:
         """
         if not _is_defensive_proposal(top_candidate):
             return False
-        if intent.action_requested == "general_inquiry":
+        if intent.action_requested in _SITUATION_EVAL_EXEMPT_INTENTS:
             return False
         # Don't evaluate situations where the parameter gate synthesized converse
         # (that's a clarifying question, not an adversarial decline)

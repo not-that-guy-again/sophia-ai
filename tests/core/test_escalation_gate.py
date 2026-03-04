@@ -88,3 +88,129 @@ def test_missing_constraints_key():
         {"policies": {}},
     )
     assert result.triggered is False
+
+
+# --- Conversation history (inherited escalation) tests ---
+
+
+def test_inherited_escalation_from_prior_turn():
+    """Current message has no trigger, but prior user turn has legal threat → inherited."""
+    result = check_escalation_triggers(
+        "So what are you going to do about it?",
+        CS_CONSTRAINTS,
+        conversation_history=[
+            {"role": "user", "content": "I will take legal action against you"},
+            {"role": "assistant", "content": "I understand your concern."},
+        ],
+    )
+    assert result.triggered is True
+    assert result.inherited is True
+    assert result.matched_trigger == "customer threatens legal action"
+
+
+def test_inherited_escalation_not_triggered_if_no_prior_match():
+    """No triggers in current message or prior turns → not triggered."""
+    result = check_escalation_triggers(
+        "What is your return policy?",
+        CS_CONSTRAINTS,
+        conversation_history=[
+            {"role": "user", "content": "Hello, I have a question about my order."},
+            {"role": "assistant", "content": "Sure, how can I help?"},
+        ],
+    )
+    assert result.triggered is False
+    assert result.inherited is False
+
+
+def test_current_message_takes_priority_over_history():
+    """Current message matches trigger A, prior turn matches trigger B → current wins."""
+    result = check_escalation_triggers(
+        "I want to speak with a manager right now",
+        CS_CONSTRAINTS,
+        conversation_history=[
+            {"role": "user", "content": "I will take legal action against you"},
+        ],
+    )
+    assert result.triggered is True
+    assert result.inherited is False
+    assert result.matched_trigger == "customer requests to speak with manager"
+
+
+def test_empty_conversation_history():
+    """conversation_history=[] behaves same as None."""
+    result = check_escalation_triggers(
+        "What is your return policy?",
+        CS_CONSTRAINTS,
+        conversation_history=[],
+    )
+    assert result.triggered is False
+    assert result.inherited is False
+
+
+# --- Per-trigger minimum tier tests ---
+
+
+CS_CONSTRAINTS_WITH_SEVERITY = {
+    **CS_CONSTRAINTS,
+    "escalation_trigger_severity": {
+        "customer threatens legal action": "RED",
+    },
+}
+
+
+def test_legal_threat_trigger_floors_to_red():
+    """Legal threat trigger with severity map → min_tier is RED."""
+    result = check_escalation_triggers(
+        "I'm going to take legal action against you",
+        CS_CONSTRAINTS_WITH_SEVERITY,
+    )
+    assert result.triggered is True
+    assert result.min_tier == "RED"
+    assert result.matched_trigger == "customer threatens legal action"
+
+
+def test_default_trigger_floors_to_orange():
+    """Trigger not in severity map → min_tier defaults to ORANGE."""
+    result = check_escalation_triggers(
+        "I want to speak with a manager",
+        CS_CONSTRAINTS_WITH_SEVERITY,
+    )
+    assert result.triggered is True
+    assert result.min_tier == "ORANGE"
+
+
+def test_inherited_trigger_uses_severity_map():
+    """Inherited trigger for legal action → min_tier is RED via severity map."""
+    result = check_escalation_triggers(
+        "So what are you going to do about it?",
+        CS_CONSTRAINTS_WITH_SEVERITY,
+        conversation_history=[
+            {"role": "user", "content": "I will take legal action against you"},
+        ],
+    )
+    assert result.triggered is True
+    assert result.inherited is True
+    assert result.min_tier == "RED"
+
+
+def test_missing_severity_map_defaults_to_orange():
+    """Constraints with no escalation_trigger_severity → all triggers default to ORANGE."""
+    result = check_escalation_triggers(
+        "I'm going to take legal action against you",
+        CS_CONSTRAINTS,  # no severity map
+    )
+    assert result.triggered is True
+    assert result.min_tier == "ORANGE"
+
+
+def test_only_user_turns_checked_for_inheritance():
+    """Prior assistant turn with trigger keywords → not matched (only user turns count)."""
+    result = check_escalation_triggers(
+        "OK thanks",
+        CS_CONSTRAINTS,
+        conversation_history=[
+            {"role": "assistant", "content": "You mentioned legal action earlier."},
+        ],
+    )
+    assert result.triggered is False
+    assert result.inherited is False

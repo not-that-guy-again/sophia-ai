@@ -20,7 +20,14 @@
     "refund amount exceeds agent authority",
     "customer claims injury or safety issue",
     "request involves multiple orders over $200 total",
-    "customer requests to speak with manager"
+    "customer requests to speak with manager",
+    "request for another customer's information",
+    "request for another customer's order",
+    "request for another person's account",
+    "friend order account",
+    "wife order delivery",
+    "intercept package",
+    "illegal remove discount"
   ],
   "hard_rules": [
     "Never give away products for free",
@@ -29,6 +36,10 @@
     "Never make promises about future policy changes",
     "Always verify order belongs to the requesting customer before any action"
   ],
+  "escalation_trigger_severity": {
+    "customer threatens legal action": "RED",
+    "illegal remove discount": "RED"
+  },
   "communications_policy": {
     "contacts": {
       "manager": { "channel": "slack", "address": "#cs-escalations" },
