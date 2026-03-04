@@ -237,7 +237,7 @@ There are also generic REST and GraphQL adapters that let you connect any API th
 
 ### Key Design Decisions
 
-Sophia has 25 Architecture Decision Records documenting every significant choice. Here are the ones that matter most:
+Sophia has 29 Architecture Decision Records documenting every significant choice. Here are the ones that matter most:
 
 **Propose, then evaluate.** The LLM proposes actions. It does not execute them. Execution only happens after consequence analysis, evaluation, and risk classification. This is the foundational principle.
 
@@ -313,7 +313,7 @@ The entire test suite runs with zero external dependencies. No API keys, no data
 - **[Architecture Reference](docs/ARCHITECTURE.md)** for the full technical deep-dive
 - **[Hat Specification](docs/HAT_SPEC.md)** for the formal Hat interface
 - **[Creating Hats](docs/CREATING_HATS.md)** if you want to build your own
-- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-025)
+- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-029)
 - **[Contributing](docs/CONTRIBUTING.md)** for development guidelines
 
 ## License

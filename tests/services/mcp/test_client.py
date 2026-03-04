@@ -1,4 +1,5 @@
 import json
+import logging
 
 import httpx
 import pytest
@@ -206,5 +207,229 @@ async def test_timeout_raises():
 
     with pytest.raises(MCPTimeoutError, match="Timeout"):
         await client.connect()
+
+    await client.close()
+
+
+# ── Retry / reconnection tests ─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_retry_succeeds_after_transient_failure():
+    """Successful call after one transient connection failure."""
+    call_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise httpx.ConnectError("transient failure")
+        return httpx.Response(
+            200,
+            json=_make_jsonrpc_response({"ok": True}, request_id=call_count),
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        max_retries=3,
+        retry_base_delay=0.0,
+    )
+    client._http_client = httpx.AsyncClient(
+        base_url="http://test-server:8080", transport=transport, timeout=30.0
+    )
+    client._connected = True  # simulate already connected
+
+    result = await client._send_jsonrpc("test/method")
+    assert result == {"ok": True}
+    # call 1: fails, call 2: reconnect init, call 3: reconnect tools/list, call 4: retry succeeds
+    assert call_count == 4
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_retry_exhaustion_raises_original_exception():
+    """All retries exhausted raises the original exception type."""
+    call_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        raise httpx.ConnectError("persistent failure")
+
+    transport = httpx.MockTransport(handler)
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        max_retries=3,
+        retry_base_delay=0.0,
+    )
+    client._http_client = httpx.AsyncClient(
+        base_url="http://test-server:8080", transport=transport, timeout=30.0
+    )
+    client._connected = True  # start connected
+
+    with pytest.raises(MCPConnectionError, match="Connection error"):
+        await client._send_jsonrpc("test/method")
+
+    # Each of 3 attempts fails; reconnect between retries also fails
+    # (reconnect's _send_jsonrpc uses _reconnect=False with its own 3 retries)
+    assert call_count > 3
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_retry_reconnects_when_disconnected():
+    """When _connected is False on retry, connect() is attempted before retrying."""
+    call_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        body = json.loads(request.content)
+        method = body.get("method", "")
+
+        if call_count == 1:
+            # First call fails
+            raise httpx.ConnectError("disconnected")
+
+        if method == "initialize":
+            return httpx.Response(
+                200,
+                json=_make_jsonrpc_response(
+                    {"protocolVersion": "2024-11-05", "serverInfo": {"name": "test"}},
+                    request_id=body["id"],
+                ),
+            )
+        if method == "tools/list":
+            return httpx.Response(
+                200,
+                json=_make_jsonrpc_response(
+                    {"tools": []}, request_id=body["id"]
+                ),
+            )
+        # The retried original call
+        return httpx.Response(
+            200,
+            json=_make_jsonrpc_response({"reconnected": True}, request_id=body["id"]),
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        max_retries=3,
+        retry_base_delay=0.0,
+    )
+    client._http_client = httpx.AsyncClient(
+        base_url="http://test-server:8080", transport=transport, timeout=30.0
+    )
+    client._connected = True  # start as connected
+
+    result = await client._send_jsonrpc("test/method")
+    assert result == {"reconnected": True}
+    # call 1: original fail, calls 2-3: reconnect (init + tools/list), call 4: retry
+    assert call_count == 4
+
+    await client.close()
+
+
+# ── Token provider tests ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_static_auth_headers_sent():
+    """Static auth_headers are sent on requests (existing behaviour)."""
+    captured_headers = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.update(dict(request.headers))
+        return httpx.Response(
+            200,
+            json=_make_jsonrpc_response({"ok": True}, request_id=1),
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        auth_headers={"Authorization": "Bearer static-token"},
+        max_retries=1,
+    )
+    client._http_client = httpx.AsyncClient(
+        base_url="http://test-server:8080",
+        headers=client.auth_headers,
+        transport=transport,
+        timeout=30.0,
+    )
+
+    await client._send_jsonrpc("test/method")
+    assert captured_headers.get("authorization") == "Bearer static-token"
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_token_provider_called_per_request():
+    """Token provider is called when building auth headers."""
+    call_count = 0
+
+    def provider() -> str:
+        nonlocal call_count
+        call_count += 1
+        return f"dynamic-token-{call_count}"
+
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        token_provider=provider,
+    )
+
+    headers1 = client.auth_headers
+    headers2 = client.auth_headers
+    assert headers1["Authorization"] == "Bearer dynamic-token-1"
+    assert headers2["Authorization"] == "Bearer dynamic-token-2"
+    assert call_count == 2
+
+
+# ── Protocol version mismatch test ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_protocol_version_mismatch_logs_warning(caplog):
+    """Protocol version mismatch logs a warning but does not raise."""
+    responses = [
+        _make_jsonrpc_response(
+            {
+                "protocolVersion": "2025-01-01",
+                "serverInfo": {"name": "test-server"},
+            },
+            request_id=1,
+        ),
+        _make_jsonrpc_response(
+            {"tools": [{"name": "some_tool", "description": "", "inputSchema": {}}]},
+            request_id=2,
+        ),
+    ]
+    transport = _make_mock_transport(responses)
+    client = MCPClient(
+        server_url="http://test-server:8080",
+        server_name="test-server",
+        max_retries=1,
+    )
+    client._http_client = httpx.AsyncClient(
+        base_url="http://test-server:8080", transport=transport, timeout=30.0
+    )
+
+    with caplog.at_level(logging.WARNING, logger="sophia.services.mcp.client"):
+        server_info = await client.connect()
+
+    assert server_info.name == "test-server"
+    assert client.is_connected is True
+    assert any("protocolVersion" in record.message for record in caplog.records)
+    assert any("2025-01-01" in record.message for record in caplog.records)
 
     await client.close()

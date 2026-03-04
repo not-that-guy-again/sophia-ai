@@ -251,7 +251,10 @@ def _not_supported(method_name: str):
 
     def _raise(**kwargs):
         raise NotImplementedError(
-            f"Shopify MCP server does not support {method_name}"
+            f"'{method_name}' is not supported by the Shopify MCP server. "
+            f"Options: (1) implement it in a custom mapping module, "
+            f"(2) use the generic REST adapter to call the Shopify Admin API directly, "
+            f"or (3) submit a feature request to the MCP server maintainer."
         )
 
     return _raise

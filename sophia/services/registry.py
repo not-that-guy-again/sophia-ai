@@ -36,6 +36,9 @@ _MCP_SERVICE_CLASSES: dict[str, type] = {}
 # Platform mapping modules keyed by platform name
 PLATFORM_MAPPINGS: dict[str, str] = {
     "shopify": "sophia.services.mcp.shopify_mapping",
+    "woocommerce": "sophia.services.mcp.woocommerce_mapping",
+    "stripe": "sophia.services.mcp.stripe_mapping",
+    "shipstation": "sophia.services.mcp.shipstation_mapping",
 }
 
 # Mapping function name convention per service
@@ -131,11 +134,12 @@ class ServiceRegistry:
         # Connection dedup: reuse client for same (url, name)
         client_key = (server_url, server_name)
         if client_key not in self._mcp_clients:
-            auth_headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else None
+            token = auth_token
+            token_provider = (lambda: token) if token else None
             client = MCPClient(
                 server_url=server_url,
                 server_name=server_name,
-                auth_headers=auth_headers,
+                token_provider=token_provider,
             )
             await client.connect()
             self._mcp_clients[client_key] = client
