@@ -20,9 +20,11 @@ class OllamaProvider(LLMProvider):
         system_prompt: str,
         user_message: str,
         response_format: dict | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> LLMResponse:
         messages = [
             {"role": "system", "content": system_prompt},
+            *(conversation_history or []),
             {"role": "user", "content": user_message},
         ]
 

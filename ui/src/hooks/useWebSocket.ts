@@ -189,6 +189,12 @@ export function useWebSocket(url: string): UseSophiaSocket {
     setIsProcessing(true);
     setCurrentStage("sending");
 
+    // Derive conversation history from current messages (role + content only)
+    const history = messages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
     // Add user message
     setMessages((prev) => [
       ...prev,
@@ -202,8 +208,8 @@ export function useWebSocket(url: string): UseSophiaSocket {
       },
     ]);
 
-    wsRef.current.send(JSON.stringify({ message: text }));
-  }, []);
+    wsRef.current.send(JSON.stringify({ message: text, conversation_history: history }));
+  }, [messages]);
 
   const updateMessage = useCallback(
     (id: string, patch: Partial<ChatMessage>) => {

@@ -185,8 +185,10 @@ async def websocket_chat(websocket: WebSocket):
             })
 
         while True:
-            data = await websocket.receive_text()
-            message = json.loads(data).get("message", data)
+            raw = await websocket.receive_text()
+            data = json.loads(raw)
+            message = data.get("message", raw)
+            history = data.get("conversation_history", [])
 
             # Pre-flight ack callback: emit immediately via WebSocket
             async def emit_ack(msg: str):
@@ -196,7 +198,7 @@ async def websocket_chat(websocket: WebSocket):
                 })
 
             # Run the full pipeline (includes evaluation panel)
-            result = await loop.process(message, on_preflight_ack=emit_ack)
+            result = await loop.process(message, on_preflight_ack=emit_ack, conversation_history=history)
 
             # Emit pipeline stage events for UI visualization
             await websocket.send_json({
