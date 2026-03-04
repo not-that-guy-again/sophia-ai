@@ -29,6 +29,7 @@ class LLMProvider(ABC):
         system_prompt: str,
         user_message: str,
         response_format: dict | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> LLMResponse:
         """Send a completion request to the LLM.
 
@@ -36,6 +37,7 @@ class LLMProvider(ABC):
             system_prompt: The system prompt guiding the LLM's behavior.
             user_message: The user's message to respond to.
             response_format: Optional JSON schema hint for structured output.
+            conversation_history: Optional prior conversation turns for context.
 
         Returns:
             LLMResponse with the model's response content and usage stats.

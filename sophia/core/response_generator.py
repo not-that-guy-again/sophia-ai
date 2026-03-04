@@ -63,6 +63,7 @@ class ResponseGenerator:
         action_reasoning: str,
         tool_result_message: str,
         tool_result_data: dict | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> str:
         """Generate a natural language response for a pipeline result."""
         tool_result_str = tool_result_message
@@ -87,10 +88,11 @@ class ResponseGenerator:
         response = await self.llm.complete(
             system_prompt=system_prompt,
             user_message=user_message,
+            conversation_history=conversation_history,
         )
         return response.content.strip()
 
-    async def converse(self, user_message: str) -> str:
+    async def converse(self, user_message: str, conversation_history: list[dict] | None = None) -> str:
         """Generate a direct conversational response (no tool execution)."""
         core_prompt = CONVERSE_SYSTEM_PROMPT.format(
             domain_context=self._get_domain_context(),
@@ -105,5 +107,6 @@ class ResponseGenerator:
         response = await self.llm.complete(
             system_prompt=system_prompt,
             user_message=user_message,
+            conversation_history=conversation_history,
         )
         return response.content.strip()

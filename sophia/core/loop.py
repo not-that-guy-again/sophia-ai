@@ -265,6 +265,7 @@ class AgentLoop:
         on_preflight_ack: Callable[[str], Awaitable[None]] | None = None,
         source: str = "user",
         metadata: dict | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> PipelineResult:
         """Run a message through the full pipeline."""
         await self._ensure_hat_equipped()
@@ -326,7 +327,7 @@ class AgentLoop:
         # Check for conversational bypass (ADR-017)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
         if top_candidate and top_candidate.tool_name == CONVERSE_TOOL_NAME:
-            result = await self._handle_converse(message, intent, proposal, hat_name)
+            result = await self._handle_converse(message, intent, proposal, hat_name, conversation_history=conversation_history)
             result.metadata.update(gate_metadata)
             return result
 
@@ -377,6 +378,7 @@ class AgentLoop:
                 tool_result_data=execution.tool_result.data
                 if isinstance(execution.tool_result.data, dict)
                 else None,
+                conversation_history=conversation_history,
             )
         else:
             response = execution.tool_result.message
@@ -414,11 +416,12 @@ class AgentLoop:
         intent: Intent,
         proposal: Proposal,
         hat_name: str,
+        conversation_history: list[dict] | None = None,
     ) -> PipelineResult:
         """Handle conversational bypass — skip consequence/evaluation/execution."""
         logger.info("Conversational bypass: skipping consequence engine and evaluation panel")
 
-        response = await self.response_generator.converse(message)
+        response = await self.response_generator.converse(message, conversation_history=conversation_history)
 
         # Build minimal pipeline result with empty consequence/evaluation/execution
         converse_candidate = proposal.candidates[0]
