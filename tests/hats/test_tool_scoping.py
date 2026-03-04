@@ -11,7 +11,7 @@ async def test_only_hat_tools_available():
     tool_reg = ToolRegistry()
     hat_reg = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
 
-    hat_reg.equip("customer-service")
+    await hat_reg.equip("customer-service")
 
     # All CS tools available
     names = {d["name"] for d in tool_reg.get_definitions()}
@@ -33,10 +33,10 @@ async def test_tools_cleared_on_unequip():
     tool_reg = ToolRegistry()
     hat_reg = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
 
-    hat_reg.equip("customer-service")
-    assert len(tool_reg.get_definitions()) == 11
+    await hat_reg.equip("customer-service")
+    assert len(tool_reg.get_definitions()) == 20
 
-    hat_reg.unequip()
+    await hat_reg.unequip()
     assert len(tool_reg.get_definitions()) == 0
 
     # Previously registered tool should now fail

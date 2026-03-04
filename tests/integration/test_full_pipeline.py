@@ -597,8 +597,9 @@ async def test_conversational_input_bypasses_pipeline(
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("What is your return policy?")
 

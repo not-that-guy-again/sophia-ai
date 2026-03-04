@@ -82,8 +82,9 @@ async def test_parameter_gate_shortcircuits_placeholder_order_id(
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("Where is my order? It hasn't arrived yet.")
 
@@ -180,8 +181,9 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("What's my order status?")
 
@@ -279,8 +281,9 @@ async def test_parameter_gate_passes_valid_candidates_through(
         hats_dir=Path(settings.hats_dir),
         tool_registry=loop.tool_registry,
     )
-    loop.hat_registry.equip(settings.default_hat)
+    await loop.hat_registry.equip(settings.default_hat)
     loop._rebuild_pipeline()
+    loop._hat_equipped = True
 
     result = await loop.process("What's the status of order ORD-12345?")
 

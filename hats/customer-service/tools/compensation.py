@@ -1,4 +1,4 @@
-import uuid
+from dataclasses import asdict
 
 from sophia.tools.base import Tool, ToolResult
 
@@ -12,25 +12,38 @@ class OfferDiscountTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
-            "customer_id": {"type": "string", "description": "Customer to receive the discount"},
-            "discount_percent": {"type": "integer", "description": "Discount percentage (max 20 for agent)"},
-            "reason": {"type": "string", "description": "Reason for offering the discount"},
+            "customer_id": {
+                "type": "string",
+                "description": "Customer to receive the discount",
+            },
+            "discount_percent": {
+                "type": "integer",
+                "description": "Discount percentage (max 20 for agent)",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for offering the discount",
+            },
         },
         "required": ["customer_id", "discount_percent", "reason"],
     }
     authority_level = "agent"
-    max_financial_impact = None  # Depends on future purchase
+    max_financial_impact = None
+
+    def inject_services(self, services):
+        self.compensation_service = services.get("compensation")
 
     async def execute(self, params: dict) -> ToolResult:
-        pct = params.get("discount_percent", 0)
+        result = await self.compensation_service.apply_discount(
+            params["customer_id"], params["discount_percent"], params["reason"],
+        )
         return ToolResult(
             success=True,
-            data={
-                "discount_code": f"DISC-{uuid.uuid4().hex[:8].upper()}",
-                "percent": pct,
-                "expiry": "2025-04-01",
-            },
-            message=f"Generated {pct}% discount code for customer {params.get('customer_id')}",
+            data=asdict(result),
+            message=(
+                f"Generated {result.percent}% discount code for customer "
+                f"{params['customer_id']}"
+            ),
         )
 
 
@@ -40,23 +53,35 @@ class OfferFreeShippingTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
-            "customer_id": {"type": "string", "description": "Customer to receive free shipping"},
-            "order_id": {"type": "string", "description": "Specific order ID, or omit for next order"},
-            "reason": {"type": "string", "description": "Reason for offering free shipping"},
+            "customer_id": {
+                "type": "string",
+                "description": "Customer to receive free shipping",
+            },
+            "order_id": {
+                "type": "string",
+                "description": "Specific order ID, or omit for next order",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for offering free shipping",
+            },
         },
         "required": ["customer_id", "reason"],
     }
     authority_level = "agent"
     max_financial_impact = 15.00
 
+    def inject_services(self, services):
+        self.compensation_service = services.get("compensation")
+
     async def execute(self, params: dict) -> ToolResult:
+        result = await self.compensation_service.apply_free_shipping(
+            params["customer_id"], params.get("order_id"), params["reason"],
+        )
         return ToolResult(
             success=True,
-            data={
-                "applied": True,
-                "estimated_savings": 9.99,
-            },
-            message=f"Free shipping applied for customer {params.get('customer_id')}",
+            data=asdict(result),
+            message=f"Free shipping applied for customer {params['customer_id']}",
         )
 
 
@@ -69,25 +94,38 @@ class OfferPartialRefundTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
-            "order_id": {"type": "string", "description": "The order to partially refund"},
-            "amount": {"type": "number", "description": "Dollar amount to refund (max $50 for agent)"},
-            "reason": {"type": "string", "description": "Reason for the partial refund"},
+            "order_id": {
+                "type": "string",
+                "description": "The order to partially refund",
+            },
+            "amount": {
+                "type": "number",
+                "description": "Dollar amount to refund (max $50 for agent)",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for the partial refund",
+            },
         },
         "required": ["order_id", "amount", "reason"],
     }
     authority_level = "agent"
     max_financial_impact = 50.00
 
+    def inject_services(self, services):
+        self.compensation_service = services.get("compensation")
+
     async def execute(self, params: dict) -> ToolResult:
-        amount = params.get("amount", 0)
+        result = await self.compensation_service.process_partial_refund(
+            params["order_id"], params["amount"], params["reason"],
+        )
         return ToolResult(
             success=True,
-            data={
-                "refund_id": f"REF-{uuid.uuid4().hex[:8].upper()}",
-                "amount": amount,
-                "status": "processed",
-            },
-            message=f"Partial refund of ${amount:.2f} issued for order {params.get('order_id')}",
+            data=asdict(result),
+            message=(
+                f"Partial refund of ${result.amount:.2f} issued for order "
+                f"{params['order_id']}"
+            ),
         )
 
 
@@ -100,24 +138,31 @@ class OfferFullRefundTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
-            "order_id": {"type": "string", "description": "The order to fully refund"},
-            "reason": {"type": "string", "description": "Reason for the full refund"},
+            "order_id": {
+                "type": "string",
+                "description": "The order to fully refund",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for the full refund",
+            },
         },
         "required": ["order_id", "reason"],
     }
     authority_level = "agent"
     max_financial_impact = 100.00
 
+    def inject_services(self, services):
+        self.compensation_service = services.get("compensation")
+
     async def execute(self, params: dict) -> ToolResult:
-        # In a real system, would look up order total
+        result = await self.compensation_service.process_full_refund(
+            params["order_id"], params["reason"],
+        )
         return ToolResult(
             success=True,
-            data={
-                "refund_id": f"REF-{uuid.uuid4().hex[:8].upper()}",
-                "amount": 0.00,  # Would be the actual order total
-                "status": "processed",
-            },
-            message=f"Full refund issued for order {params.get('order_id')}",
+            data=asdict(result),
+            message=f"Full refund issued for order {params['order_id']}",
         )
 
 
@@ -127,21 +172,50 @@ class SendReplacementProductTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
-            "order_id": {"type": "string", "description": "Original order ID"},
-            "product_id": {"type": "string", "description": "Product to send as replacement"},
-            "reason": {"type": "string", "description": "Reason for the replacement"},
+            "order_id": {
+                "type": "string",
+                "description": "Original order ID",
+            },
+            "product_id": {
+                "type": "string",
+                "description": "Product to send as replacement",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for the replacement",
+            },
         },
         "required": ["order_id", "product_id", "reason"],
     }
     authority_level = "agent"
-    max_financial_impact = None  # Depends on product
+    max_financial_impact = None
+
+    def inject_services(self, services):
+        self.order_service = services.get("order")
+        self.inventory_service = services.get("inventory")
 
     async def execute(self, params: dict) -> ToolResult:
+        from sophia.services.models import OrderItem
+
+        product = await self.inventory_service.get_product_details(params["product_id"])
+        if not product:
+            return ToolResult(
+                success=False, data=None,
+                message=f"Product {params['product_id']} not found",
+            )
+
+        items = [OrderItem(
+            product_id=product.product_id,
+            name=product.name,
+            quantity=1,
+            unit_price=0.0,
+            total_price=0.0,
+        )]
+        order = await self.order_service.place_order(
+            params.get("customer_id", "REPLACEMENT"), items,
+        )
         return ToolResult(
             success=True,
-            data={
-                "replacement_order_id": f"ORD-RPL-{uuid.uuid4().hex[:6].upper()}",
-                "estimated_delivery": "2025-03-08",
-            },
-            message=f"Replacement product shipped for order {params.get('order_id')}",
+            data={"replacement_order_id": order.order_id},
+            message=f"Replacement product shipped for order {params['order_id']}",
         )

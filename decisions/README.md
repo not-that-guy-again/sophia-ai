@@ -38,3 +38,7 @@ Each ADR follows a consistent structure:
 | [019](ADR-019-constitution-based-identity.md) | Constitution-based identity and voice | Accepted |
 | [020](ADR-020-preflight-parameter-gate.md) | Pre-flight parameter gate | Accepted |
 | [021](ADR-021-preflight-acknowledgment.md) | Pre-flight acknowledgment | Accepted |
+| [022](ADR-022-service-provider-abstraction.md) | Service provider abstraction layer | Accepted |
+| [023](ADR-023-hat-scoped-backend-configuration.md) | Hat-scoped backend configuration | Accepted |
+| [024](ADR-024-generic-rest-graphql-adapters.md) | Generic REST and GraphQL service adapters | Accepted |
+| [025](ADR-025-webhook-event-ingestion.md) | Webhook event ingestion for proactive behavior | Accepted |
