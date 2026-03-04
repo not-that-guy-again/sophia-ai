@@ -42,3 +42,7 @@ Each ADR follows a consistent structure:
 | [023](ADR-023-hat-scoped-backend-configuration.md) | Hat-scoped backend configuration | Accepted |
 | [024](ADR-024-generic-rest-graphql-adapters.md) | Generic REST and GraphQL service adapters | Accepted |
 | [025](ADR-025-webhook-event-ingestion.md) | Webhook event ingestion for proactive behavior | Accepted |
+| [026](ADR-026-mcp-as-backend-transport.md) | MCP as backend transport, not tool-calling | Accepted |
+| [027](ADR-027-api-authentication.md) | API authentication and tenant isolation | Accepted |
+| [028](ADR-028-outbound-notifications.md) | Outbound notification service | Accepted |
+| [029](ADR-029-webhook-event-execution.md) | Webhook event action execution | Accepted |

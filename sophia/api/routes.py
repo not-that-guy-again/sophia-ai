@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import asdict
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from sophia.api.schemas import (
     ChatRequest,
@@ -14,11 +14,20 @@ from sophia.api.schemas import (
 )
 from sophia.audit.database import get_session
 from sophia.audit.service import store_decision_with_hat
+from sophia.config import settings
 from sophia.core.loop import AgentLoop, _tree_to_dict, _evaluation_to_dict, _classification_to_dict
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _get_auth_dependency(scope: str):
+    """Return a conditional auth dependency based on settings."""
+    if settings.auth_enabled:
+        from sophia.auth.middleware import require_scope
+        return Depends(require_scope(scope))
+    return Depends(lambda: None)
 
 # Lazily initialized agent loop (created on first request)
 _agent_loop: AgentLoop | None = None
@@ -34,7 +43,47 @@ async def get_agent_loop() -> AgentLoop:
 
 @router.get("/health", response_model=HealthResponse)
 async def health():
-    return HealthResponse(status="ok", version="0.1.0")
+    checks: dict[str, str] = {}
+    degraded = False
+
+    # Check database connectivity
+    try:
+        from sophia.audit.database import _engine
+        if _engine is not None:
+            from sqlalchemy import text
+            async with _engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        else:
+            checks["database"] = "unavailable"
+            degraded = True
+    except Exception:
+        checks["database"] = "error"
+        degraded = True
+
+    # Check active hat
+    if _agent_loop and _agent_loop.hat_registry.get_active():
+        checks["hat"] = "ok"
+    else:
+        checks["hat"] = "none"
+
+    # Check service backends
+    if _agent_loop and _agent_loop.hat_registry.get_active():
+        svc_reg = _agent_loop.hat_registry.service_registry
+        if svc_reg._services:
+            checks["services"] = "ok"
+        else:
+            checks["services"] = "none"
+    else:
+        checks["services"] = "none"
+
+    status = "degraded" if degraded else "ok"
+    status_code = 503 if degraded else 200
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=status_code,
+        content=HealthResponse(status=status, version="0.1.0", checks=checks).model_dump(),
+    )
 
 
 @router.get("/tools", response_model=list[ToolDefinitionResponse])
@@ -54,7 +103,7 @@ async def _log_audit(loop: AgentLoop, result, message: str) -> None:
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, _auth=_get_auth_dependency("chat")):
     loop = await get_agent_loop()
     result = await loop.process(request.message)
     await _log_audit(loop, result, request.message)
@@ -100,7 +149,7 @@ async def active_hat():
 
 
 @router.post("/hats/{hat_name}/equip", response_model=HatActiveResponse)
-async def equip_hat(hat_name: str):
+async def equip_hat(hat_name: str, _auth=_get_auth_dependency("admin")):
     """Equip a different hat, switching tools and domain context."""
     loop = await get_agent_loop()
     try:

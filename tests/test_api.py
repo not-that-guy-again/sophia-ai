@@ -26,11 +26,25 @@ client = TestClient(app)
 
 
 def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ok"
-    assert data["version"] == "0.1.0"
+    # Health endpoint checks DB connectivity; init an in-memory DB
+    import asyncio
+    from sophia.audit.database import init_db, close_db
+    from sophia.config import Settings as _Settings
+
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(
+        init_db(_Settings(database_url="sqlite+aiosqlite:///:memory:"))
+    )
+    try:
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["version"] == "0.1.0"
+        assert "checks" in data
+    finally:
+        loop.run_until_complete(close_db())
+        loop.close()
 
 
 def test_tools_endpoint():

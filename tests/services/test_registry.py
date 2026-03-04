@@ -1,5 +1,8 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
+from sophia.services.mcp.models import MCPServerInfo, MCPToolDefinition
 from sophia.services.registry import PROVIDER_REGISTRY, ServiceRegistry
 
 
@@ -117,5 +120,119 @@ async def test_missing_env_var_raises_clear_error():
             "order": {
                 "provider": "custom",
                 "config": {"token_env": "MISSING_VAR"},
+            }
+        })
+
+
+# ── MCP Provider Tests ──────────────────────────────────────────────────────
+
+
+def _make_mock_mcp_client():
+    """Create a mock MCPClient with standard tools."""
+    client = AsyncMock()
+    client.connect.return_value = MCPServerInfo(
+        name="test-server",
+        url="http://test:8080",
+        tools=[
+            MCPToolDefinition(name="get_order", description="", input_schema={}),
+            MCPToolDefinition(name="cancel_order", description="", input_schema={}),
+            MCPToolDefinition(name="list_orders", description="", input_schema={}),
+            MCPToolDefinition(name="get_customer", description="", input_schema={}),
+            MCPToolDefinition(name="search_customers", description="", input_schema={}),
+            MCPToolDefinition(name="get_product", description="", input_schema={}),
+            MCPToolDefinition(name="get_inventory_level", description="", input_schema={}),
+            MCPToolDefinition(name="create_refund", description="", input_schema={}),
+        ],
+    )
+    client._tools = {
+        t.name: t for t in client.connect.return_value.tools
+    }
+    client.close = AsyncMock()
+    return client
+
+
+async def test_initialize_mcp_provider():
+    mock_client = _make_mock_mcp_client()
+
+    with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
+        reg = ServiceRegistry()
+        await reg.initialize({
+            "order": {
+                "provider": "mcp",
+                "config": {
+                    "server_url": "http://test:8080",
+                    "server_name": "test-server",
+                    "platform": "shopify",
+                },
+            }
+        })
+
+        svc = reg.get("order")
+        assert hasattr(svc, "adapter")
+        mock_client.connect.assert_called_once()
+        await reg.teardown()
+
+
+async def test_mcp_client_dedup():
+    mock_client = _make_mock_mcp_client()
+
+    with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
+        reg = ServiceRegistry()
+        await reg.initialize({
+            "order": {
+                "provider": "mcp",
+                "config": {
+                    "server_url": "http://test:8080",
+                    "server_name": "test-server",
+                    "platform": "shopify",
+                },
+            },
+            "customer": {
+                "provider": "mcp",
+                "config": {
+                    "server_url": "http://test:8080",
+                    "server_name": "test-server",
+                    "platform": "shopify",
+                },
+            },
+        })
+
+        # Only one client created despite two services
+        assert mock_client.connect.call_count == 1
+        assert len(reg._mcp_clients) == 1
+        await reg.teardown()
+
+
+async def test_mcp_teardown_closes_clients():
+    mock_client = _make_mock_mcp_client()
+
+    with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
+        reg = ServiceRegistry()
+        await reg.initialize({
+            "order": {
+                "provider": "mcp",
+                "config": {
+                    "server_url": "http://test:8080",
+                    "server_name": "test-server",
+                    "platform": "shopify",
+                },
+            }
+        })
+
+        await reg.teardown()
+        mock_client.close.assert_called_once()
+        assert len(reg._mcp_clients) == 0
+
+
+async def test_mcp_missing_platform_raises():
+    reg = ServiceRegistry()
+    with pytest.raises(ValueError, match="Unknown MCP platform"):
+        await reg.initialize({
+            "order": {
+                "provider": "mcp",
+                "config": {
+                    "server_url": "http://test:8080",
+                    "platform": "nonexistent",
+                },
             }
         })

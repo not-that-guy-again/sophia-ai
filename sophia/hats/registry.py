@@ -19,6 +19,8 @@ class HatRegistry:
         self.service_registry = ServiceRegistry()
         self._available: dict[str, HatManifest] = {}
         self._active: HatConfig | None = None
+        self.memory = None  # Set by AgentLoop after init
+        self.agent_loop = None  # Set by AgentLoop after init
         self._scan()
 
     def _scan(self) -> None:
@@ -59,11 +61,22 @@ class HatRegistry:
         # as a structured definition alongside hat tools
         self.tool_registry.register(ConverseTool())
 
+        # Build notification service if hat config has notifications block
+        notification_service = None
+        notifications_cfg = hat_config.manifest.notifications
+        if notifications_cfg:
+            notification_service = self._build_notification_service(notifications_cfg)
+
         # Configure webhook routing if hat defines webhooks
         if hat_config.manifest.webhooks:
             from sophia.api.webhook_routes import configure_webhooks
 
-            configure_webhooks(hat_config.manifest.webhooks)
+            configure_webhooks(
+                hat_config.manifest.webhooks,
+                memory=self.memory,
+                agent_loop=self.agent_loop,
+                notification_service=notification_service,
+            )
 
         self._active = hat_config
         logger.info(
@@ -84,6 +97,18 @@ class HatRegistry:
 
             teardown_webhooks()
             self._active = None
+
+    @staticmethod
+    def _build_notification_service(notifications_cfg: dict):
+        """Construct a notification service from hat config."""
+        provider = notifications_cfg.get("provider", "log")
+        if provider == "webhook":
+            from sophia.notifications.webhook_notifier import WebhookNotificationService
+            url = notifications_cfg.get("webhook_url", "")
+            return WebhookNotificationService(webhook_url=url)
+        else:
+            from sophia.notifications.log import LogNotificationService
+            return LogNotificationService()
 
     def get_active(self) -> HatConfig | None:
         """Return the currently equipped hat config, or None."""

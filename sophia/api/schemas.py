@@ -94,6 +94,7 @@ class ChatResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
+    checks: dict[str, str] = {}
 
 
 class ToolDefinitionResponse(BaseModel):

@@ -23,14 +23,24 @@ _event_router: EventRouter | None = None
 _validators: dict[str, SignatureValidator] = {}
 
 
-def configure_webhooks(webhooks_config: dict) -> None:
+def configure_webhooks(
+    webhooks_config: dict,
+    memory=None,
+    agent_loop=None,
+    notification_service=None,
+) -> None:
     """Initialize webhook routing from a hat's webhooks config block.
 
     Called during hat equip.  Sets up validators and the event router.
     """
     global _event_router, _validators
 
-    _event_router = EventRouter(webhooks_config)
+    _event_router = EventRouter(
+        webhooks_config,
+        memory=memory,
+        agent_loop=agent_loop,
+        notification_service=notification_service,
+    )
     _validators = {}
 
     for source, source_cfg in webhooks_config.items():
@@ -111,6 +121,9 @@ async def receive_webhook(source: str, request: Request) -> Response:
 
     # Record for audit.
     _record_event(event, action)
+
+    # Execute the routed action.
+    await _event_router.execute(action)
 
     logger.info(
         "Webhook processed: source=%s topic=%s action=%s entity=%s",

@@ -1,6 +1,10 @@
 """Tests for event router."""
 
+import logging
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+import pytest
 
 from sophia.webhooks.models import SophiaEvent
 from sophia.webhooks.router import EventAction, EventRouter
@@ -97,3 +101,131 @@ def test_different_events_not_deduplicated():
 
     assert router.route(event1, "orders/create") is not None
     assert router.route(event2, "orders/create") is not None
+
+
+# ── Execute Tests ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_execute_memory_update():
+    mock_memory = AsyncMock()
+    mock_memory.store_entity.return_value = "entity-id"
+
+    router = EventRouter({"shopify": {"events": {}}}, memory=mock_memory)
+    event = _make_event(entity_id="ORD-123")
+    action = EventAction(EventAction.MEMORY_UPDATE, event)
+
+    await router.execute(action)
+
+    mock_memory.store_entity.assert_called_once()
+    stored_entity = mock_memory.store_entity.call_args[0][0]
+    assert stored_entity.id == "shopify:order:ORD-123"
+    assert stored_entity.entity_type == "order"
+    assert stored_entity.name == "ORD-123"
+
+
+@pytest.mark.asyncio
+async def test_execute_trigger_pipeline():
+    mock_loop = AsyncMock()
+    mock_loop.process.return_value = AsyncMock(
+        risk_classification=AsyncMock(tier="GREEN"),
+        execution=AsyncMock(action_taken=AsyncMock(tool_name="look_up_order")),
+    )
+
+    router = EventRouter({"shopify": {"events": {}}}, agent_loop=mock_loop)
+    event = _make_event(entity_id="ORD-123")
+    action = EventAction(
+        EventAction.TRIGGER_PIPELINE, event, synthetic_message="Check order ORD-123"
+    )
+
+    await router.execute(action)
+
+    mock_loop.process.assert_called_once()
+    call_kwargs = mock_loop.process.call_args[1]
+    assert call_kwargs["message"] == "Check order ORD-123"
+    assert call_kwargs["source"] == "webhook"
+
+
+@pytest.mark.asyncio
+async def test_execute_no_memory_logs_warning(caplog):
+    router = EventRouter({"shopify": {"events": {}}})
+    event = _make_event()
+    action = EventAction(EventAction.MEMORY_UPDATE, event)
+
+    with caplog.at_level(logging.WARNING):
+        await router.execute(action)
+
+    assert "Memory provider not configured" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_execute_no_agent_loop_logs_warning(caplog):
+    router = EventRouter({"shopify": {"events": {}}})
+    event = _make_event()
+    action = EventAction(
+        EventAction.TRIGGER_PIPELINE, event, synthetic_message="test"
+    )
+
+    with caplog.at_level(logging.WARNING):
+        await router.execute(action)
+
+    assert "Agent loop not configured" in caplog.text
+
+
+# ── Notification Tests ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_execute_notify_sends_notification():
+    mock_notif = AsyncMock()
+    mock_notif.send_notification.return_value = AsyncMock(
+        success=True, channel="log"
+    )
+
+    router = EventRouter(
+        {"shopify": {"events": {}}},
+        notification_service=mock_notif,
+    )
+    event = _make_event(entity_id="CUST-1")
+    action = EventAction(EventAction.MEMORY_UPDATE_AND_NOTIFY, event)
+
+    await router.execute(action)
+
+    mock_notif.send_notification.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_execute_notify_without_service_skips(caplog):
+    router = EventRouter({"shopify": {"events": {}}})
+    event = _make_event()
+    action = EventAction(EventAction.MEMORY_UPDATE_AND_NOTIFY, event)
+
+    with caplog.at_level(logging.INFO):
+        await router.execute(action)
+
+    assert "No notification service configured" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_execute_notify_gate_blocks():
+    mock_notif = AsyncMock()
+
+    router = EventRouter(
+        {"shopify": {
+            "events": {},
+            "notification_limits": {"max_daily_per_customer": 1},
+        }},
+        notification_service=mock_notif,
+    )
+    event = _make_event(entity_id="CUST-1")
+    action = EventAction(EventAction.MEMORY_UPDATE_AND_NOTIFY, event)
+
+    # First should go through
+    await router.execute(action)
+    assert mock_notif.send_notification.call_count == 1
+
+    # Second should be blocked by gate
+    action2 = EventAction(EventAction.MEMORY_UPDATE_AND_NOTIFY, event)
+    await router.execute(action2)
+    # Still 1 — blocked by rate limit
+    assert mock_notif.send_notification.call_count == 1
