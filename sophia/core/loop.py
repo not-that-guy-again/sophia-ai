@@ -152,6 +152,10 @@ class AgentLoop:
             tool_registry=self.tool_registry,
         )
 
+        # Set refs on hat_registry so webhooks can access memory and pipeline
+        self.hat_registry.memory = self.memory
+        self.hat_registry.agent_loop = self
+
         # Hat equipping is deferred to first process() or explicit equip_hat()
         # because service initialization is async
         self._hat_equipped = False
@@ -259,12 +263,14 @@ class AgentLoop:
         self,
         message: str,
         on_preflight_ack: Callable[[str], Awaitable[None]] | None = None,
+        source: str = "user",
+        metadata: dict | None = None,
     ) -> PipelineResult:
         """Run a message through the full pipeline."""
         await self._ensure_hat_equipped()
         hat = self.hat_registry.get_active()
         hat_name = hat.name if hat else "none"
-        logger.info("Processing message (hat=%s): %s", hat_name, message[:100])
+        logger.info("Processing message (hat=%s, source=%s): %s", hat_name, source, message[:100])
 
         # Step 0: Memory recall — query for relevant context
         memory_context = await self._recall_memory(message)
@@ -301,18 +307,21 @@ class AgentLoop:
             )
 
         # Step 2.6: Pre-flight acknowledgment (ADR-021)
-        preflight_ack = maybe_generate_ack(
-            intent=intent,
-            candidates=proposal.candidates,
-            tool_registry=self.tool_registry,
-            hat_config=hat,
-        )
+        # Skip for webhook-sourced messages
+        preflight_ack: str | None = None
         preflight_ack_at: float | None = None
-        if preflight_ack:
-            preflight_ack_at = time.time()
-            logger.info("Preflight ack: %s", preflight_ack)
-            if on_preflight_ack:
-                await on_preflight_ack(preflight_ack)
+        if source != "webhook":
+            preflight_ack = maybe_generate_ack(
+                intent=intent,
+                candidates=proposal.candidates,
+                tool_registry=self.tool_registry,
+                hat_config=hat,
+            )
+            if preflight_ack:
+                preflight_ack_at = time.time()
+                logger.info("Preflight ack: %s", preflight_ack)
+                if on_preflight_ack:
+                    await on_preflight_ack(preflight_ack)
 
         # Check for conversational bypass (ADR-017)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
@@ -384,11 +393,13 @@ class AgentLoop:
             preflight_ack_at=preflight_ack_at,
             metadata={
                 "hat": hat_name,
+                "source": source,
                 "memory_context": {
                     "entities_recalled": len(memory_context.get("entities", [])),
                     "episodes_recalled": len(memory_context.get("episodes", [])),
                 },
                 **gate_metadata,
+                **(metadata or {}),
             },
         )
 

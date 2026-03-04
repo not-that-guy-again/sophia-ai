@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     # Catastrophic threshold (core safety, not hat-configurable)
     catastrophic_threshold: float = -0.8
 
+    # Auth
+    auth_enabled: bool = False
+    auth_bootstrap_key: str = ""
+
+    # Notifications
+    notification_provider: str = "log"  # "log" or "webhook"
+
     # Memory (Phase 6)
     memory_provider: str = "mock"  # "surrealdb" or "mock"
     surrealdb_url: str = "ws://localhost:8529"
