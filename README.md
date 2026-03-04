@@ -306,14 +306,16 @@ The entire test suite runs with zero external dependencies. No API keys, no data
 | 5 | Audit & Feedback: persistent logging, outcome tracking | ✅ Complete |
 | 6 | Memory System: three-tier memory with SurrealDB | ✅ Complete |
 | 7 | Pipeline Optimization: conversational bypass, parameter gate, preflight ack, constitution | ✅ Complete |
-| 8 | Production Readiness: service providers, adapters, webhooks, MCP | 🔧 In Progress |
+| 8 | Service Layer: provider abstraction, REST/GraphQL/MCP adapters, Shopify mapping, webhooks, notifications, auth | ✅ Complete |
+| 9 | Safety Validation: situation evaluation (ADR-030), adversarial eval suite, baseline results (6/6 scenarios, 18/18 turns) | ✅ Complete |
+| 10 | Production Deployment: live backend, real customer interactions, second Hat | 🔧 Not started |
 
 ## Documentation
 
 - **[Architecture Reference](docs/ARCHITECTURE.md)** for the full technical deep-dive
 - **[Hat Specification](docs/HAT_SPEC.md)** for the formal Hat interface
 - **[Creating Hats](docs/CREATING_HATS.md)** if you want to build your own
-- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-029)
+- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-030)
 - **[Contributing](docs/CONTRIBUTING.md)** for development guidelines
 
 ## License
