@@ -14,5 +14,6 @@
     "green": -0.1,
     "yellow": -0.4,
     "orange": -0.7
-  }
+  },
+  "min_tier": "ORANGE"
 }

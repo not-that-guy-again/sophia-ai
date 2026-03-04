@@ -23,6 +23,7 @@ from sophia.core.parameter_gate import ParameterGate
 from sophia.core.preflight_ack import maybe_generate_ack
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
+from sophia.core.escalation_gate import check_escalation_triggers
 from sophia.core.risk_classifier import RiskClassification, classify
 from sophia.hats.registry import HatRegistry
 from sophia.hats.schema import HatConfig
@@ -100,6 +101,7 @@ class PipelineResult:
     preflight_ack: str | None = None
     preflight_ack_at: float | None = None
     metadata: dict = field(default_factory=dict)
+    escalation_trigger_matched: str | None = None
     situation_tree: ConsequenceTree | None = None
     situation_evaluation_results: list = field(default_factory=list)
     situation_risk_classification: RiskClassification | None = None
@@ -122,6 +124,7 @@ class PipelineResult:
             "bypassed": self.bypassed,
             "preflight_ack": self.preflight_ack,
             "preflight_ack_at": self.preflight_ack_at,
+            "escalation_trigger_matched": self.escalation_trigger_matched,
             "metadata": self.metadata,
         }
         if self.situation_tree is not None:
@@ -327,6 +330,17 @@ class AgentLoop:
                 len(gate_result.original_candidates) - len(gate_result.surviving_candidates),
             )
 
+        # Step 2.55: Escalation trigger gate — deterministic, no LLM
+        escalation_result = check_escalation_triggers(
+            message, hat.constraints or {}
+        )
+        if escalation_result.triggered:
+            logger.info(
+                "Escalation trigger: %r → minimum tier ORANGE",
+                escalation_result.matched_trigger,
+            )
+        escalation_min_tier = escalation_result.min_tier if escalation_result.triggered else None
+
         # Step 2.6: Pre-flight acknowledgment (ADR-021)
         # Skip for webhook-sourced messages
         preflight_ack: str | None = None
@@ -351,6 +365,7 @@ class AgentLoop:
                 result = await self._handle_converse_with_evaluation(
                     message, intent, proposal, hat_name, hat,
                     conversation_history=conversation_history,
+                    escalation_min_tier=escalation_min_tier,
                 )
             else:
                 # Genuine conversational bypass — greeting, chitchat, general inquiry (ADR-017)
@@ -358,6 +373,7 @@ class AgentLoop:
                     message, intent, proposal, hat_name,
                     conversation_history=conversation_history,
                 )
+            result.escalation_trigger_matched = escalation_result.matched_trigger
             result.metadata.update(gate_metadata)
             return result
 
@@ -377,7 +393,8 @@ class AgentLoop:
         # Step 4: Evaluation panel — run 4 evaluators in parallel on top candidate's tree
         top_tree = consequence_trees[0] if consequence_trees else None
         evaluation_results, risk_classification = await self._run_evaluation_panel(
-            top_tree, hat, intent, proposal.candidates
+            top_tree, hat, intent, proposal.candidates,
+            min_tier=escalation_min_tier,
         )
         logger.info(
             "Risk classification: %s (score=%.2f)",
@@ -423,6 +440,7 @@ class AgentLoop:
             response=response,
             preflight_ack=preflight_ack,
             preflight_ack_at=preflight_ack_at,
+            escalation_trigger_matched=escalation_result.matched_trigger,
             metadata={
                 "hat": hat_name,
                 "source": source,
@@ -510,6 +528,7 @@ class AgentLoop:
         hat_name: str,
         hat_config: HatConfig | None,
         conversation_history: list[dict] | None = None,
+        escalation_min_tier: str | None = None,
     ) -> PipelineResult:
         """Handle a defensive response with full situation evaluation.
 
@@ -549,6 +568,7 @@ class AgentLoop:
             situation_eval_results,
             hat_config=hat_config,
             candidates=proposal.candidates,
+            min_tier=escalation_min_tier,
         )
 
         logger.info(
@@ -606,6 +626,7 @@ class AgentLoop:
         hat: HatConfig | None,
         intent: Intent,
         candidates: list[CandidateAction],
+        min_tier: str | None = None,
     ) -> tuple[list[EvaluatorResult], RiskClassification]:
         """Run all evaluators in parallel and classify risk."""
         if tree is None:
@@ -642,7 +663,7 @@ class AgentLoop:
             )
 
         # Deterministic risk classification
-        risk_classification = classify(evaluation_results, hat, candidates)
+        risk_classification = classify(evaluation_results, hat, candidates, min_tier=min_tier)
         return evaluation_results, risk_classification
 
     async def _tiered_execute(

@@ -41,12 +41,14 @@ class RiskClassification:
     override_reason: str | None = None
     recommended_action: CandidateAction | None = None
     explanation: str = ""
+    min_tier_applied: str | None = None
 
 
 def classify(
     results: list[EvaluatorResult],
     hat_config: HatConfig | None = None,
     candidates: list[CandidateAction] | None = None,
+    min_tier: str | None = None,
 ) -> RiskClassification:
     """Classify risk from evaluator results. Deterministic, no LLM.
 
@@ -116,6 +118,21 @@ def classify(
                 tier,
             )
 
+    # --- Apply minimum tier floor (from escalation gate) ---
+    min_tier_applied = None
+    if min_tier and TIER_ORDER.index(tier) < TIER_ORDER.index(min_tier):
+        logger.info("Minimum tier floor %s applied (was %s)", min_tier, tier)
+        tier = min_tier
+        min_tier_applied = min_tier
+
+    # --- Apply hat-configured minimum tier floor ---
+    if hat_config and hat_config.evaluator_config.min_tier:
+        hat_min = hat_config.evaluator_config.min_tier
+        if TIER_ORDER.index(tier) < TIER_ORDER.index(hat_min):
+            logger.info("Hat min_tier floor %s applied (was %s)", hat_min, tier)
+            tier = hat_min
+            min_tier_applied = hat_min
+
     # --- Select recommended action ---
     recommended = _select_recommended_action(tier, candidates)
 
@@ -127,6 +144,7 @@ def classify(
         override_reason=None,
         recommended_action=recommended,
         explanation=_build_explanation(results, tier),
+        min_tier_applied=min_tier_applied,
     )
 
 

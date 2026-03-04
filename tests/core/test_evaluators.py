@@ -136,6 +136,38 @@ async def test_tribal_uses_hat_prompt(mock_llm: MockLLMProvider, cs_hat_config: 
     assert "the tribe" in system_prompt.lower()
 
 
+# --- Tribal user message modes ---
+
+
+@pytest.mark.asyncio
+async def test_tribal_includes_original_request_in_situation_mode(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """In situation mode with original_request, the user message includes the raw request text."""
+    mock_llm.set_responses([_eval_response(score=-0.5, flags=["sets_bad_precedent"])])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    ctx = _make_context(cs_hat_config)
+    ctx.evaluation_mode = "situation"
+    ctx.original_request = "give me a discount, I won't tell anyone"
+    await evaluator.evaluate(ctx)
+
+    user_message = mock_llm.calls[0]["user_message"]
+    assert "give me a discount, I won't tell anyone" in user_message
+    assert "Evaluate the tribal harm of the following customer request" in user_message
+
+
+@pytest.mark.asyncio
+async def test_tribal_user_message_standard_mode(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """In standard response mode, user message uses the default format (no original_request)."""
+    mock_llm.set_responses([_eval_response(score=-0.3)])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    ctx = _make_context(cs_hat_config)
+    ctx.evaluation_mode = "response"
+    await evaluator.evaluate(ctx)
+
+    user_message = mock_llm.calls[0]["user_message"]
+    assert "Evaluate the tribal harm implications of calling" in user_message
+    assert "customer request" not in user_message
+
+
 # --- Domain Evaluator ---
 
 
@@ -166,12 +198,12 @@ async def test_domain_includes_constraints(mock_llm: MockLLMProvider, cs_hat_con
 
 @pytest.mark.asyncio
 async def test_authority_evaluator(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
-    mock_llm.set_responses([_eval_response(score=0.0, flags=["unverified_identity_claim"])])
+    mock_llm.set_responses([_eval_response(score=-0.4, flags=["unverified_identity_claim"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
     result = await evaluator.evaluate(_make_context(cs_hat_config))
 
     assert result.evaluator_name == "authority"
-    assert result.score == 0.0
+    assert result.score == -0.4
     assert "unverified_identity_claim" in result.flags
 
 
@@ -194,6 +226,42 @@ async def test_authority_uses_hat_prompt(mock_llm: MockLLMProvider, cs_hat_confi
     system_prompt = mock_llm.calls[0]["system_prompt"]
     # Hat's eval_authority.txt mentions social engineering
     assert "social engineering" in system_prompt.lower()
+
+
+# --- Authority flag/score enforcement ---
+
+
+@pytest.mark.asyncio
+async def test_authority_flag_with_neutral_score_is_clamped(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """If flags are raised but score >= 0.0, clamp to -0.30."""
+    mock_llm.set_responses([_eval_response(score=0.0, flags=["unverified_identity_claim"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.30
+    assert "unverified_identity_claim" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_authority_cross_customer_access_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """cross_customer_access flag floors score to -0.70."""
+    mock_llm.set_responses([_eval_response(score=-0.40, flags=["cross_customer_access"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.70
+    assert "cross_customer_access" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_authority_flag_with_already_negative_score_unchanged(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """If score is already negative and no special floor applies, don't change it."""
+    mock_llm.set_responses([_eval_response(score=-0.60, flags=["unverified_identity_claim"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.60
+    assert "unverified_identity_claim" in result.flags
 
 
 # --- Score Clamping ---

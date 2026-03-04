@@ -437,11 +437,10 @@ async def test_refund_with_evaluation_panel_green(
     assert len(results) == 4
     assert all(r.score == 0.3 for r in results)
 
-    # Risk classification
+    # Risk classification — hat min_tier="ORANGE" floors GREEN to ORANGE
     rc = classify(results, hat_config=cs_hat_config, candidates=proposal.candidates)
-    assert rc.tier == "GREEN"
-    assert rc.recommended_action is not None
-    assert rc.recommended_action.tool_name == "offer_full_refund"
+    assert rc.tier == "ORANGE"
+    assert rc.min_tier_applied == "ORANGE"
 
     # Execute
     executor = Executor(registry=tool_registry)
@@ -644,14 +643,14 @@ async def test_yellow_tier_confirmation(
     from sophia.core.proposer import Proposal
     proposal = Proposal(candidates=candidates, intent=None)
 
+    # Hat min_tier="ORANGE" floors YELLOW to ORANGE
     rc = classify(results, hat_config=cs_hat_config, candidates=candidates)
-    assert rc.tier == "YELLOW"
+    assert rc.tier == "ORANGE"
+    assert rc.min_tier_applied == "ORANGE"
 
     executor = Executor(registry=tool_registry)
-    execution = executor.build_confirmation(proposal, rc, [])
-    assert execution.risk_tier == "YELLOW"
-    assert execution.tool_result.data.get("requires_confirmation") is True
-    assert "confirmation" in execution.tool_result.message.lower()
+    execution = await executor.build_escalation(proposal, rc)
+    assert execution.risk_tier == "ORANGE"
 
 
 # --- ADR-030: Situation Evaluation Integration Tests ---

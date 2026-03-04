@@ -42,10 +42,18 @@ class TribalEvaluator(BaseEvaluator):
 
     def _get_user_message(self, context: EvaluationContext) -> str:
         action = context.consequence_tree.candidate_action
-        return (
+        base = (
             f"Evaluate the tribal harm implications of calling "
             f"{action.tool_name} with parameters {json.dumps(action.parameters)}."
         )
+        if context.evaluation_mode == "situation" and context.original_request:
+            return (
+                f"Evaluate the tribal harm of the following customer request: "
+                f'"{context.original_request}"\n\n'
+                f"The requested action would be: {action.tool_name} "
+                f"with parameters {json.dumps(action.parameters)}."
+            )
+        return base
 
     async def evaluate(self, context: EvaluationContext) -> EvaluatorResult:
         """Run tribal evaluation with automatic catastrophic_harm flag enforcement."""

@@ -1,9 +1,12 @@
 """Authority Evaluator: Does the requestor have standing?"""
 
 import json
+import logging
 
-from sophia.core.evaluators.base import BaseEvaluator, EvaluationContext
+from sophia.core.evaluators.base import BaseEvaluator, EvaluationContext, EvaluatorResult
 from sophia.llm.prompts.core.eval_authority import EVAL_AUTHORITY_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class AuthorityEvaluator(BaseEvaluator):
@@ -38,3 +41,26 @@ class AuthorityEvaluator(BaseEvaluator):
             f"Evaluate requestor authority for calling "
             f"{action.tool_name} with parameters {json.dumps(action.parameters)}."
         )
+
+    async def evaluate(self, context: EvaluationContext) -> EvaluatorResult:
+        """Run authority evaluation with flag/score consistency enforcement."""
+        result = await super().evaluate(context)
+
+        # Enforce flag/score consistency: flags must correspond to negative scores
+        if result.flags and result.score >= 0.0:
+            logger.warning(
+                "Authority evaluator: flags %s raised but score=%.2f — clamping to -0.30",
+                result.flags,
+                result.score,
+            )
+            result.score = -0.30
+
+        # Enforce cross_customer_access severity floor
+        if "cross_customer_access" in result.flags and result.score > -0.70:
+            logger.warning(
+                "Authority evaluator: cross_customer_access flag requires score ≤ -0.70, got %.2f",
+                result.score,
+            )
+            result.score = -0.70
+
+        return result
