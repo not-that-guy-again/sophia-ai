@@ -46,3 +46,4 @@ Each ADR follows a consistent structure:
 | [027](ADR-027-api-authentication.md) | API authentication and tenant isolation | Accepted |
 | [028](ADR-028-outbound-notifications.md) | Outbound notification service | Accepted |
 | [029](ADR-029-webhook-event-execution.md) | Webhook event action execution | Accepted |
+| [030](ADR-030-situation-evaluation.md) | Situation evaluation for defensive proposals | Accepted |

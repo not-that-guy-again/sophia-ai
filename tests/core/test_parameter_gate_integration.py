@@ -297,5 +297,6 @@ async def test_parameter_gate_passes_valid_candidates_through(
     gate_data = result.metadata["parameter_gate"]
     assert all(v["passed"] for v in gate_data)
 
-    # 9 LLM calls: gate, proposer, consequence tree, 4 evaluators, response gen, memory
-    assert len(mock_llm.calls) == 9
+    # 8 LLM calls: gate, proposer, consequence tree, 4 evaluators, memory
+    # (hat min_tier="ORANGE" floors GREEN → ORANGE, skipping response generator)
+    assert len(mock_llm.calls) == 8

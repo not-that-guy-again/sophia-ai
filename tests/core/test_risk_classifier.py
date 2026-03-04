@@ -236,3 +236,82 @@ class TestClassify:
         rc = classify([], candidates=_make_candidates())
         assert rc.tier == "GREEN"
         assert rc.weighted_score == 0.0
+
+
+class TestMinTier:
+    """Tests for the min_tier floor (escalation gate and hat config)."""
+
+    def test_min_tier_floors_yellow_to_orange(self):
+        """Weighted score producing YELLOW is floored to ORANGE by hat min_tier."""
+        # Scores that produce a YELLOW tier (weighted score around -0.2 to -0.3)
+        results = [
+            _make_result("self_interest", 0.0),
+            _make_result("tribal", -0.3),
+            _make_result("domain", -0.2),
+            _make_result("authority", 0.0),
+        ]
+        hat = HatConfig(
+            manifest=HatManifest(name="test"),
+            hat_path="/tmp/test",
+            evaluator_config=EvaluatorConfig(min_tier="ORANGE"),
+        )
+        rc = classify(results, hat_config=hat, candidates=_make_candidates())
+        assert rc.tier == "ORANGE"
+        assert rc.min_tier_applied == "ORANGE"
+
+    def test_min_tier_does_not_lower_red(self):
+        """min_tier=ORANGE should not lower a RED classification."""
+        results = [
+            _make_result("self_interest", 0.0),
+            _make_result("tribal", -0.9, flags=["catastrophic_harm"]),
+            _make_result("domain", -0.5),
+            _make_result("authority", -0.3),
+        ]
+        hat = HatConfig(
+            manifest=HatManifest(name="test"),
+            hat_path="/tmp/test",
+            evaluator_config=EvaluatorConfig(min_tier="ORANGE"),
+        )
+        rc = classify(results, hat_config=hat, candidates=_make_candidates())
+        assert rc.tier == "RED"
+
+    def test_min_tier_none_no_effect(self):
+        """When min_tier is None, classifier behaves as before."""
+        results = _all_positive()
+        hat = HatConfig(
+            manifest=HatManifest(name="test"),
+            hat_path="/tmp/test",
+            evaluator_config=EvaluatorConfig(min_tier=None),
+        )
+        rc = classify(results, hat_config=hat, candidates=_make_candidates())
+        assert rc.tier == "GREEN"
+        assert rc.min_tier_applied is None
+
+    def test_min_tier_applied_after_catastrophic_override(self):
+        """Catastrophic harm flag forces RED regardless of min_tier."""
+        results = [
+            _make_result("self_interest", 0.5),
+            _make_result("tribal", -0.9, flags=["catastrophic_harm"]),
+            _make_result("domain", 0.3),
+            _make_result("authority", 0.2),
+        ]
+        hat = HatConfig(
+            manifest=HatManifest(name="test"),
+            hat_path="/tmp/test",
+            evaluator_config=EvaluatorConfig(min_tier="ORANGE"),
+        )
+        rc = classify(results, hat_config=hat, candidates=_make_candidates())
+        assert rc.tier == "RED"
+
+    def test_escalation_min_tier_parameter(self):
+        """The min_tier parameter from escalation gate floors the tier."""
+        results = _all_positive()
+        rc = classify(results, candidates=_make_candidates(), min_tier="ORANGE")
+        assert rc.tier == "ORANGE"
+        assert rc.min_tier_applied == "ORANGE"
+
+    def test_escalation_min_tier_none_no_effect(self):
+        """min_tier=None has no effect on classification."""
+        results = _all_positive()
+        rc = classify(results, candidates=_make_candidates(), min_tier=None)
+        assert rc.tier == "GREEN"

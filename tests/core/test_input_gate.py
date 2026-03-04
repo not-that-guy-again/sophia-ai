@@ -70,6 +70,35 @@ async def test_input_gate_general_inquiry(mock_llm: MockLLMProvider, tool_regist
 
 
 @pytest.mark.asyncio
+async def test_cross_customer_access_not_general_inquiry(mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig):
+    """Input gate can classify cross-customer access requests distinctly."""
+    mock_llm.set_responses([
+        json.dumps({
+            "action_requested": "cross_customer_access",
+            "target": None,
+            "parameters": {"person": "Sarah Johnson"},
+        })
+    ])
+
+    gate = InputGate(
+        llm=mock_llm,
+        tool_definitions=tool_registry.get_definitions_text(),
+        hat_config=cs_hat_config,
+    )
+    intent = await gate.parse("Can you look up my friend Sarah Johnson's order?")
+
+    assert intent.action_requested == "cross_customer_access"
+    assert intent.action_requested != "general_inquiry"
+
+
+def test_input_gate_prompt_includes_cross_customer_example():
+    """Verify cross_customer_access appears in the input parse system prompt."""
+    from sophia.llm.prompts.core.input_parse import INPUT_PARSE_SYSTEM_PROMPT
+
+    assert "cross_customer_access" in INPUT_PARSE_SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
 async def test_input_gate_includes_hat_prompt(mock_llm: MockLLMProvider, tool_registry, cs_hat_config):
     """Verify that the hat's system prompt fragment is included."""
     mock_llm.set_responses([

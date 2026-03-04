@@ -43,6 +43,7 @@ class EvaluatorConfig(BaseModel):
     weight_overrides: dict[str, float] = Field(default_factory=dict)
     custom_flags: dict[str, list[str]] = Field(default_factory=dict)
     risk_thresholds: dict[str, float] = Field(default_factory=dict)
+    min_tier: str | None = None
 
 
 class Stakeholder(BaseModel):

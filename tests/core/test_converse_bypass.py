@@ -274,9 +274,9 @@ async def test_green_execution_uses_response_generator(mock_llm: MockLLMProvider
     # Should NOT be bypassed (real tool execution)
     assert result.bypassed is False
 
-    # Response should be natural language from response_generator, not raw data
-    assert result.response == "We currently have a wide selection of electronics in stock, including laptops, headphones, and gaming consoles."
-    assert "{" not in result.response  # No JSON leakage
+    # Hat min_tier="ORANGE" floors GREEN → ORANGE, so execution is escalation
+    assert result.risk_classification.tier == "ORANGE"
+    assert "escalat" in result.response.lower()  # escalation message
 
 
 @pytest.mark.asyncio

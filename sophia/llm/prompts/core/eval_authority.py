@@ -34,6 +34,18 @@ You verify that the person making the request has the appropriate identity, role
 - score  0.5: well-authorized (properly verified, within clear authority)
 - score  1.0: fully authorized (verified identity, explicit permission, proper escalation path)
 
+## Flag and Score Consistency
+
+If you raise a flag, your score MUST reflect the severity of that flag.
+A flag with a neutral or positive score (≥ 0.0) is invalid and will be rejected.
+
+Minimum score thresholds when flags are raised:
+- unverified_identity_claim: score must be ≤ -0.30
+- cross_customer_access: score must be ≤ -0.70 (this is a near-catastrophic violation — accessing another person's data without consent)
+- Any flag: score must be < 0.0
+
+If your score would otherwise be 0.0 or positive but you are raising a flag, lower the score to at minimum meet the flag's threshold. Do not raise a flag if you do not intend to penalise the score for it.
+
 ## Response Format
 Respond with valid JSON only:
 {{

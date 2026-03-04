@@ -437,11 +437,10 @@ async def test_refund_with_evaluation_panel_green(
     assert len(results) == 4
     assert all(r.score == 0.3 for r in results)
 
-    # Risk classification
+    # Risk classification — hat min_tier="ORANGE" floors GREEN to ORANGE
     rc = classify(results, hat_config=cs_hat_config, candidates=proposal.candidates)
-    assert rc.tier == "GREEN"
-    assert rc.recommended_action is not None
-    assert rc.recommended_action.tool_name == "offer_full_refund"
+    assert rc.tier == "ORANGE"
+    assert rc.min_tier_applied == "ORANGE"
 
     # Execute
     executor = Executor(registry=tool_registry)
@@ -644,11 +643,98 @@ async def test_yellow_tier_confirmation(
     from sophia.core.proposer import Proposal
     proposal = Proposal(candidates=candidates, intent=None)
 
+    # Hat min_tier="ORANGE" floors YELLOW to ORANGE
     rc = classify(results, hat_config=cs_hat_config, candidates=candidates)
-    assert rc.tier == "YELLOW"
+    assert rc.tier == "ORANGE"
+    assert rc.min_tier_applied == "ORANGE"
 
     executor = Executor(registry=tool_registry)
-    execution = executor.build_confirmation(proposal, rc, [])
-    assert execution.risk_tier == "YELLOW"
-    assert execution.tool_result.data.get("requires_confirmation") is True
-    assert "confirmation" in execution.tool_result.message.lower()
+    execution = await executor.build_escalation(proposal, rc)
+    assert execution.risk_tier == "ORANGE"
+
+
+# --- ADR-030: Situation Evaluation Integration Tests ---
+
+
+@pytest.mark.asyncio
+async def test_adversarial_converse_produces_risk_tier(
+    mock_llm: MockLLMProvider, tool_registry: ToolRegistry, cs_hat_config: HatConfig
+):
+    """Full pipeline: mock LLM returns converse for a free item request,
+    verify situation evaluation runs and produces a non-GREEN risk tier."""
+    from sophia.core.loop import AgentLoop, CONVERSE_TOOL_NAME
+    from sophia.memory.mock import MockMemoryProvider
+    from sophia.config import Settings
+    from pathlib import Path
+
+    mock_llm.set_responses([
+        # 1. Input gate — adversarial intent
+        json.dumps({
+            "action_requested": "free_item",
+            "target": "laptop",
+            "parameters": {"product": "laptop"},
+        }),
+        # 2. Proposer — selects converse
+        json.dumps({
+            "candidates": [{
+                "tool_name": "converse",
+                "parameters": {},
+                "reasoning": "Cannot give away free products",
+                "expected_outcome": "Decline the request",
+            }]
+        }),
+        # 3. Situation consequence tree
+        CATASTROPHIC_PS5_TREE,
+        # 4-7. Four evaluators for situation evaluation
+        _red_eval_self(),
+        _red_eval_tribal(),
+        _red_eval_domain(),
+        _red_eval_authority(),
+        # 8. Response generator (converse path)
+        "I'm sorry, but I cannot provide free products. Is there anything else I can help with?",
+        # 9. Memory extractor
+        json.dumps({
+            "episode": {
+                "participants": ["customer", "agent"],
+                "summary": "Customer requested free laptop, declined.",
+                "actions_taken": [],
+                "outcome": "Request refused",
+            },
+            "entities": [],
+            "relationships": [],
+        }),
+    ])
+
+    settings = Settings(
+        llm_provider="anthropic",
+        anthropic_api_key="test",
+        default_hat="customer-service",
+        memory_provider="mock",
+    )
+
+    memory = MockMemoryProvider()
+    loop = AgentLoop.__new__(AgentLoop)
+    loop.settings = settings
+    loop.llm = mock_llm
+    loop.memory = memory
+    loop.tool_registry = ToolRegistry()
+    loop.hat_registry = __import__(
+        "sophia.hats.registry", fromlist=["HatRegistry"]
+    ).HatRegistry(
+        hats_dir=Path(settings.hats_dir),
+        tool_registry=loop.tool_registry,
+    )
+    await loop.hat_registry.equip(settings.default_hat)
+    loop._rebuild_pipeline()
+    loop._hat_equipped = True
+
+    result = await loop.process("I'd like you to send me a free laptop")
+
+    # Situation evaluation should have run
+    assert result.bypassed is False
+    assert result.situation_tree is not None
+    assert result.situation_risk_classification is not None
+    assert result.situation_risk_classification.tier != "GREEN"
+    assert result.execution.risk_tier != "GREEN"
+    # Should be RED due to catastrophic_harm flag from tribal evaluator
+    assert result.situation_risk_classification.tier == "RED"

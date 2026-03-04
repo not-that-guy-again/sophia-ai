@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from sophia.config import Settings
-from sophia.core.consequence import ConsequenceEngine, ConsequenceTree
+from sophia.core.consequence import ConsequenceEngine, ConsequenceTree, SituationCandidate
 from sophia.core.constitution import load_constitution
 from sophia.core.evaluators import (
     AuthorityEvaluator,
@@ -23,6 +23,7 @@ from sophia.core.parameter_gate import ParameterGate
 from sophia.core.preflight_ack import maybe_generate_ack
 from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
+from sophia.core.escalation_gate import check_escalation_triggers
 from sophia.core.risk_classifier import RiskClassification, classify
 from sophia.hats.registry import HatRegistry
 from sophia.hats.schema import HatConfig
@@ -35,6 +36,16 @@ from sophia.tools.registry import ToolRegistry
 logger = logging.getLogger(__name__)
 
 CONVERSE_TOOL_NAME = "converse"
+DEFENSIVE_TOOL_NAMES = {CONVERSE_TOOL_NAME, "escalate_to_human"}
+
+# Intents that are genuinely non-actionable and should not trigger situation evaluation.
+# cross_customer_access is intentionally NOT in this set — it is action-bearing.
+_SITUATION_EVAL_EXEMPT_INTENTS = frozenset({"general_inquiry"})
+
+
+def _is_defensive_proposal(candidate) -> bool:
+    """Return True if the candidate is a defensive (non-action) proposal."""
+    return candidate.tool_name in DEFENSIVE_TOOL_NAMES
 
 
 def _node_to_dict(node) -> dict:
@@ -94,9 +105,13 @@ class PipelineResult:
     preflight_ack: str | None = None
     preflight_ack_at: float | None = None
     metadata: dict = field(default_factory=dict)
+    escalation_trigger_matched: str | None = None
+    situation_tree: ConsequenceTree | None = None
+    situation_evaluation_results: list = field(default_factory=list)
+    situation_risk_classification: RiskClassification | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "intent": asdict(self.intent),
             "proposal": {
                 "candidates": [asdict(c) for c in self.proposal.candidates],
@@ -113,8 +128,20 @@ class PipelineResult:
             "bypassed": self.bypassed,
             "preflight_ack": self.preflight_ack,
             "preflight_ack_at": self.preflight_ack_at,
+            "escalation_trigger_matched": self.escalation_trigger_matched,
             "metadata": self.metadata,
         }
+        if self.situation_tree is not None:
+            result["situation_tree"] = _tree_to_dict(self.situation_tree)
+        if self.situation_evaluation_results:
+            result["situation_evaluations"] = [
+                _evaluation_to_dict(e) for e in self.situation_evaluation_results
+            ]
+        if self.situation_risk_classification is not None:
+            result["situation_risk_classification"] = _classification_to_dict(
+                self.situation_risk_classification
+            )
+        return result
 
 
 class AgentLoop:
@@ -307,6 +334,19 @@ class AgentLoop:
                 len(gate_result.original_candidates) - len(gate_result.surviving_candidates),
             )
 
+        # Step 2.55: Escalation trigger gate — deterministic, no LLM
+        escalation_result = check_escalation_triggers(
+            message,
+            hat.constraints or {},
+            conversation_history=conversation_history,
+        )
+        if escalation_result.triggered:
+            logger.info(
+                "Escalation trigger: %r → minimum tier ORANGE",
+                escalation_result.matched_trigger,
+            )
+        escalation_min_tier = escalation_result.min_tier if escalation_result.triggered else None
+
         # Step 2.6: Pre-flight acknowledgment (ADR-021)
         # Skip for webhook-sourced messages
         preflight_ack: str | None = None
@@ -324,10 +364,25 @@ class AgentLoop:
                 if on_preflight_ack:
                     await on_preflight_ack(preflight_ack)
 
-        # Check for conversational bypass (ADR-017)
+        # Check for defensive proposal requiring situation evaluation (ADR-030)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
-        if top_candidate and top_candidate.tool_name == CONVERSE_TOOL_NAME:
-            result = await self._handle_converse(message, intent, proposal, hat_name, conversation_history=conversation_history)
+        if top_candidate and _is_defensive_proposal(top_candidate):
+            should_evaluate = self._should_run_situation_evaluation(
+                intent, top_candidate, gate_result, escalation_result=escalation_result
+            )
+            if should_evaluate:
+                result = await self._handle_converse_with_evaluation(
+                    message, intent, proposal, hat_name, hat,
+                    conversation_history=conversation_history,
+                    escalation_min_tier=escalation_min_tier,
+                )
+            else:
+                # Genuine conversational bypass — greeting, chitchat, general inquiry (ADR-017)
+                result = await self._handle_converse(
+                    message, intent, proposal, hat_name,
+                    conversation_history=conversation_history,
+                )
+            result.escalation_trigger_matched = escalation_result.matched_trigger
             result.metadata.update(gate_metadata)
             return result
 
@@ -347,7 +402,8 @@ class AgentLoop:
         # Step 4: Evaluation panel — run 4 evaluators in parallel on top candidate's tree
         top_tree = consequence_trees[0] if consequence_trees else None
         evaluation_results, risk_classification = await self._run_evaluation_panel(
-            top_tree, hat, intent, proposal.candidates
+            top_tree, hat, intent, proposal.candidates,
+            min_tier=escalation_min_tier,
         )
         logger.info(
             "Risk classification: %s (score=%.2f)",
@@ -393,6 +449,7 @@ class AgentLoop:
             response=response,
             preflight_ack=preflight_ack,
             preflight_ack_at=preflight_ack_at,
+            escalation_trigger_matched=escalation_result.matched_trigger,
             metadata={
                 "hat": hat_name,
                 "source": source,
@@ -454,12 +511,141 @@ class AgentLoop:
 
         return pipeline_result
 
+    def _should_run_situation_evaluation(self, intent, top_candidate, gate_result, escalation_result=None) -> bool:
+        """Return True if the situation should be formally evaluated.
+
+        Triggers when:
+        - The proposal is defensive (converse or escalate_to_human)
+        - The intent is action-bearing (not general_inquiry)
+        - The converse was NOT synthesized by the parameter gate
+
+        Escalation gate override: if an escalation trigger fired (direct or
+        inherited), always evaluate regardless of intent classification.
+        A message that matches an escalation trigger is not genuinely
+        non-actionable even if the input gate says otherwise.
+        """
+        if not _is_defensive_proposal(top_candidate):
+            return False
+
+        # Escalation gate override: deterministic signal trumps LLM classification
+        if escalation_result and escalation_result.triggered:
+            return True
+
+        if intent.action_requested in _SITUATION_EVAL_EXEMPT_INTENTS:
+            return False
+        # Don't evaluate situations where the parameter gate synthesized converse
+        # (that's a clarifying question, not an adversarial decline)
+        if gate_result and gate_result.promoted_converse:
+            return False
+        return True
+
+    async def _handle_converse_with_evaluation(
+        self,
+        message: str,
+        intent: Intent,
+        proposal: Proposal,
+        hat_name: str,
+        hat_config: HatConfig | None,
+        conversation_history: list[dict] | None = None,
+        escalation_min_tier: str | None = None,
+    ) -> PipelineResult:
+        """Handle a defensive response with full situation evaluation.
+
+        The agent responds conversationally (converse) or escalates, but the
+        incoming situation is formally evaluated by the consequence engine and
+        evaluation panel. The audit record includes a risk tier for the situation.
+        """
+        logger.info(
+            "Situation evaluation: proposer selected %s for action_requested=%s",
+            proposal.candidates[0].tool_name,
+            intent.action_requested,
+        )
+
+        # 1. Build situation candidate from intent
+        situation = SituationCandidate.from_intent(intent)
+
+        # 2. Generate situation consequence tree
+        situation_tree = await self.consequence_engine.analyze_situation(situation)
+
+        # 3. Evaluate situation with all four evaluators
+        situation_context = EvaluationContext(
+            consequence_tree=situation_tree,
+            hat_config=hat_config,
+            constraints=hat_config.constraints if hat_config else {},
+            stakeholders=hat_config.stakeholders.stakeholders if hat_config else [],
+            requestor_context=intent.requestor_context,
+            evaluation_mode="situation",
+            original_request=message,
+        )
+
+        situation_eval_results = list(await asyncio.gather(
+            *[e.evaluate(situation_context) for e in self.evaluators]
+        ))
+
+        # 4. Classify situation risk
+        situation_classification = classify(
+            situation_eval_results,
+            hat_config=hat_config,
+            candidates=proposal.candidates,
+            min_tier=escalation_min_tier,
+        )
+
+        logger.info(
+            "Situation risk tier: %s (score: %.3f)",
+            situation_classification.tier,
+            situation_classification.weighted_score,
+        )
+
+        # 5. Generate conversational response, informed by situation tier
+        response = await self.response_generator.converse(
+            message,
+            conversation_history=conversation_history,
+            situation_tier=situation_classification.tier,
+        )
+
+        # 6. Build result — risk tier is the situation tier, not hardcoded GREEN
+        converse_candidate = proposal.candidates[0]
+        execution = ExecutionResult(
+            action_taken=converse_candidate,
+            tool_result=ToolResult(
+                success=True,
+                data=None,
+                message=f"Situation evaluated as {situation_classification.tier}. Responded conversationally.",
+            ),
+            risk_tier=situation_classification.tier,
+        )
+
+        pipeline_result = PipelineResult(
+            intent=intent,
+            proposal=proposal,
+            consequence_trees=[],
+            evaluation_results=[],
+            risk_classification=RiskClassification(
+                tier=situation_classification.tier,
+                weighted_score=situation_classification.weighted_score,
+                explanation=f"Situation evaluation: {situation_classification.explanation}",
+            ),
+            execution=execution,
+            response=response,
+            bypassed=False,
+            situation_tree=situation_tree,
+            situation_evaluation_results=situation_eval_results,
+            situation_risk_classification=situation_classification,
+            metadata={"hat": hat_name, "evaluation_mode": "situation"},
+        )
+
+        # Memory persist
+        await self._persist_memory(message, pipeline_result)
+
+        return pipeline_result
+
     async def _run_evaluation_panel(
         self,
         tree: ConsequenceTree | None,
         hat: HatConfig | None,
         intent: Intent,
         candidates: list[CandidateAction],
+        min_tier: str | None = None,
     ) -> tuple[list[EvaluatorResult], RiskClassification]:
         """Run all evaluators in parallel and classify risk."""
         if tree is None:
@@ -496,7 +682,7 @@ class AgentLoop:
             )
 
         # Deterministic risk classification
-        risk_classification = classify(evaluation_results, hat, candidates)
+        risk_classification = classify(evaluation_results, hat, candidates, min_tier=min_tier)
         return evaluation_results, risk_classification
 
     async def _tiered_execute(
