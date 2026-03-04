@@ -193,6 +193,50 @@ async def test_domain_includes_constraints(mock_llm: MockLLMProvider, cs_hat_con
     assert "refund_window_days" in system_prompt
 
 
+# --- Domain flag/score enforcement ---
+
+
+@pytest.mark.asyncio
+async def test_domain_free_item_attempt_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """free_item_attempt flag floors score to -0.70."""
+    mock_llm.set_responses([_eval_response(score=-0.20, flags=["free_item_attempt"])])
+    evaluator = DomainEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.70
+    assert "free_item_attempt" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_domain_social_engineering_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """social_engineering flag floors score to -0.50."""
+    mock_llm.set_responses([_eval_response(score=0.00, flags=["social_engineering"])])
+    evaluator = DomainEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.50
+
+
+@pytest.mark.asyncio
+async def test_domain_no_flags_score_unchanged(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """No enforcement flags → score passes through unchanged."""
+    mock_llm.set_responses([_eval_response(score=-0.30)])
+    evaluator = DomainEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.30
+
+
+@pytest.mark.asyncio
+async def test_domain_flag_already_below_floor_unchanged(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """free_item_attempt with score already below floor → not changed."""
+    mock_llm.set_responses([_eval_response(score=-0.80, flags=["free_item_attempt"])])
+    evaluator = DomainEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.80
+
+
 # --- Authority Evaluator ---
 
 
@@ -311,3 +355,73 @@ async def test_handles_markdown_wrapped_json(mock_llm: MockLLMProvider, cs_hat_c
     result = await evaluator.evaluate(_make_context(cs_hat_config))
 
     assert result.score == 0.5
+
+
+# --- Tribal flag/score enforcement ---
+
+
+@pytest.mark.asyncio
+async def test_tribal_social_engineering_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """social_engineering flag floors tribal score to -0.50."""
+    mock_llm.set_responses([_eval_response(score=0.55, flags=["social_engineering"])])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.50
+    assert "social_engineering" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_tribal_fabricated_claim_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """fabricated_claim flag floors tribal score to -0.50."""
+    mock_llm.set_responses([_eval_response(score=0.25, flags=["fabricated_claim"])])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.50
+    assert "fabricated_claim" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_tribal_social_engineering_already_below_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """social_engineering with score already below floor → not changed."""
+    mock_llm.set_responses([_eval_response(score=-0.70, flags=["social_engineering"])])
+    evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.70
+
+
+# --- Authority flag/score enforcement (social_engineering + fabricated_claim) ---
+
+
+@pytest.mark.asyncio
+async def test_authority_social_engineering_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """social_engineering flag floors authority score to -0.70."""
+    mock_llm.set_responses([_eval_response(score=-0.40, flags=["social_engineering"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.70
+    assert "social_engineering" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_authority_fabricated_claim_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """fabricated_claim flag floors authority score to -0.55."""
+    mock_llm.set_responses([_eval_response(score=-0.30, flags=["fabricated_claim"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.55
+    assert "fabricated_claim" in result.flags
+
+
+@pytest.mark.asyncio
+async def test_authority_fabricated_claim_already_below_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+    """fabricated_claim with score already below -0.55 → not changed."""
+    mock_llm.set_responses([_eval_response(score=-0.80, flags=["fabricated_claim"])])
+    evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
+    result = await evaluator.evaluate(_make_context(cs_hat_config))
+
+    assert result.score == -0.80

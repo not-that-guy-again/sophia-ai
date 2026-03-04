@@ -78,7 +78,7 @@ def classify(
         )
 
     # --- Override 2: 3+ evaluators below -0.5 → RED ---
-    severe_count = sum(1 for r in results if r.score < -0.5)
+    severe_count = sum(1 for r in results if r.score <= -0.5)
     if severe_count >= 3:
         return RiskClassification(
             tier="RED",

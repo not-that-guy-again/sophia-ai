@@ -367,12 +367,8 @@ class AgentLoop:
         # Check for defensive proposal requiring situation evaluation (ADR-030)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
         if top_candidate and _is_defensive_proposal(top_candidate):
-            # Run situation evaluation if:
-            # 1. Normal criteria (action-bearing intent, not gate-synthesized), OR
-            # 2. An escalation trigger fired (including inherited) — the floor must be applied
-            should_evaluate = (
-                self._should_run_situation_evaluation(intent, top_candidate, gate_result)
-                or escalation_result.triggered
+            should_evaluate = self._should_run_situation_evaluation(
+                intent, top_candidate, gate_result, escalation_result=escalation_result
             )
             if should_evaluate:
                 result = await self._handle_converse_with_evaluation(
@@ -515,16 +511,26 @@ class AgentLoop:
 
         return pipeline_result
 
-    def _should_run_situation_evaluation(self, intent, top_candidate, gate_result) -> bool:
+    def _should_run_situation_evaluation(self, intent, top_candidate, gate_result, escalation_result=None) -> bool:
         """Return True if the situation should be formally evaluated.
 
         Triggers when:
         - The proposal is defensive (converse or escalate_to_human)
         - The intent is action-bearing (not general_inquiry)
         - The converse was NOT synthesized by the parameter gate
+
+        Escalation gate override: if an escalation trigger fired (direct or
+        inherited), always evaluate regardless of intent classification.
+        A message that matches an escalation trigger is not genuinely
+        non-actionable even if the input gate says otherwise.
         """
         if not _is_defensive_proposal(top_candidate):
             return False
+
+        # Escalation gate override: deterministic signal trumps LLM classification
+        if escalation_result and escalation_result.triggered:
+            return True
+
         if intent.action_requested in _SITUATION_EVAL_EXEMPT_INTENTS:
             return False
         # Don't evaluate situations where the parameter gate synthesized converse

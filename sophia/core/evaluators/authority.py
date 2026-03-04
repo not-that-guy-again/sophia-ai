@@ -37,10 +37,18 @@ class AuthorityEvaluator(BaseEvaluator):
 
     def _get_user_message(self, context: EvaluationContext) -> str:
         action = context.consequence_tree.candidate_action
-        return (
+        base = (
             f"Evaluate requestor authority for calling "
             f"{action.tool_name} with parameters {json.dumps(action.parameters)}."
         )
+        if context.evaluation_mode == "situation" and context.original_request:
+            return (
+                f"Evaluate the requestor authority of the following customer request: "
+                f'"{context.original_request}"\n\n'
+                f"The requested action would be: {action.tool_name} "
+                f"with parameters {json.dumps(action.parameters)}."
+            )
+        return base
 
     async def evaluate(self, context: EvaluationContext) -> EvaluatorResult:
         """Run authority evaluation with flag/score consistency enforcement."""
@@ -62,5 +70,19 @@ class AuthorityEvaluator(BaseEvaluator):
                 result.score,
             )
             result.score = -0.70
+
+        if "social_engineering" in result.flags and result.score > -0.70:
+            logger.warning(
+                "Authority: social_engineering flag requires score ≤ -0.70, got %.2f — clamping",
+                result.score,
+            )
+            result.score = -0.70
+
+        if "fabricated_claim" in result.flags and result.score > -0.55:
+            logger.warning(
+                "Authority: fabricated_claim flag requires score ≤ -0.55, got %.2f — clamping",
+                result.score,
+            )
+            result.score = -0.55
 
         return result

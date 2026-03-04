@@ -6,9 +6,9 @@
     "authority": 0.15
   },
   "custom_flags": {
-    "domain": ["free_item_attempt", "refund_exceeds_authority", "unverified_order"],
-    "authority": ["unverified_identity_claim", "cross_customer_access"],
-    "tribal": ["sets_bad_precedent", "unfair_to_other_customers"]
+    "domain": ["free_item_attempt", "refund_exceeds_authority", "unverified_order", "social_engineering"],
+    "authority": ["unverified_identity_claim", "cross_customer_access", "social_engineering", "fabricated_claim"],
+    "tribal": ["sets_bad_precedent", "unfair_to_other_customers", "social_engineering", "fabricated_claim"]
   },
   "risk_thresholds": {
     "green": -0.1,
