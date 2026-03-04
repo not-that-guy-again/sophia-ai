@@ -14,6 +14,10 @@ Use "converse" (NOT a tool) when:
 - The user is making small talk or chitchat
 - No available tool would meaningfully address the user's message
 
+Do NOT use "converse" to decline a request that maps to an available tool. If the user requests a refund, discount, free item, or any action that corresponds to a tool — even if you believe the request should be refused — propose the relevant tool as a candidate. The evaluation pipeline decides whether the action is appropriate. Your role is to identify what is being requested, not to pre-approve it.
+
+Exception: if you are asking for a missing required parameter, use "converse" as normal.
+
 Use a tool when:
 - The user is requesting a specific action (refund, order lookup, escalation)
 - The user's request maps directly to an available tool's purpose

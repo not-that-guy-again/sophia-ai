@@ -16,6 +16,27 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class SituationCandidate:
+    """Represents the user's request as a candidate for consequence evaluation.
+
+    Used when the proposer selects a defensive response (converse/escalate_to_human)
+    to evaluate the danger of the incoming situation, not the safety of the response.
+    """
+
+    action_requested: str
+    parameters: dict
+    reasoning: str = "Evaluating the consequences of the user's request if fulfilled"
+    expected_outcome: str = "The user's requested action is executed as asked"
+
+    @classmethod
+    def from_intent(cls, intent) -> "SituationCandidate":
+        return cls(
+            action_requested=intent.action_requested,
+            parameters=intent.parameters or {},
+        )
+
+
+@dataclass
 class ConsequenceNode:
     id: str
     description: str
@@ -99,6 +120,80 @@ class ConsequenceEngine:
         logger.info(
             "Consequence tree for '%s': %d nodes, worst=%.2f, best=%.2f",
             candidate.tool_name,
+            total,
+            worst.harm_benefit if worst else 0.0,
+            best.harm_benefit if best else 0.0,
+        )
+
+        return tree
+
+    async def analyze_situation(self, situation: SituationCandidate) -> ConsequenceTree:
+        """Generate a consequence tree for the user's request, not the agent's response.
+
+        This evaluates what would happen if the requested action were fulfilled,
+        regardless of whether the agent intends to comply.
+        """
+        stakeholders_text = self._format_stakeholders()
+        constraints_text = self._format_constraints()
+
+        # Build a synthetic CandidateAction from the situation
+        synthetic_candidate = CandidateAction(
+            tool_name=f"[SITUATION] {situation.action_requested}",
+            parameters=situation.parameters,
+            reasoning=situation.reasoning,
+            expected_outcome=situation.expected_outcome,
+        )
+
+        core_prompt = CONSEQUENCE_SYSTEM_PROMPT.format(
+            max_depth=self.max_depth,
+            stakeholders=stakeholders_text,
+            constraints=constraints_text,
+            tool_name=synthetic_candidate.tool_name,
+            parameters=json.dumps(synthetic_candidate.parameters),
+            reasoning=synthetic_candidate.reasoning,
+            expected_outcome=synthetic_candidate.expected_outcome,
+        )
+
+        situation_instruction = (
+            "You are evaluating a SITUATION — what would happen if this customer "
+            "request were granted. The agent may or may not comply; your job is to "
+            "assess the risk of the request itself."
+        )
+        system_prompt = assemble_prompt("consequence", core_prompt, self.hat_config)
+        system_prompt = f"{situation_instruction}\n\n{system_prompt}"
+
+        response = await self.llm.complete(
+            system_prompt=system_prompt,
+            user_message=(
+                f"Analyze the consequences if a customer's request for "
+                f"'{situation.action_requested}' with parameters "
+                f"{json.dumps(situation.parameters)} were fulfilled."
+            ),
+            response_format={"type": "json"},
+        )
+
+        parsed = json.loads(_extract_json(response.content))
+        root_nodes = self._parse_nodes(parsed.get("consequences", []))
+
+        self._validate_stakeholder_refs(root_nodes)
+
+        total = self._count_nodes(root_nodes)
+        terminals = self._collect_terminals(root_nodes)
+        worst = min(terminals, key=lambda n: n.harm_benefit, default=None)
+        best = max(terminals, key=lambda n: n.harm_benefit, default=None)
+
+        tree = ConsequenceTree(
+            candidate_action=synthetic_candidate,
+            root_nodes=root_nodes,
+            max_depth=self.max_depth,
+            total_nodes=total,
+            worst_terminal=worst,
+            best_terminal=best,
+        )
+
+        logger.info(
+            "Situation tree for '%s': %d nodes, worst=%.2f, best=%.2f",
+            situation.action_requested,
             total,
             worst.harm_benefit if worst else 0.0,
             best.harm_benefit if best else 0.0,

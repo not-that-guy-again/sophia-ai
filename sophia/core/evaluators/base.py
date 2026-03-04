@@ -33,6 +33,8 @@ class EvaluationContext:
     stakeholders: list[Stakeholder] = field(default_factory=list)
     requestor_context: dict = field(default_factory=dict)
     conversation_history: list[Any] = field(default_factory=list)
+    evaluation_mode: str = "response"  # "response" | "situation"
+    original_request: str | None = None  # the user's raw message
 
 
 class BaseEvaluator(ABC):
@@ -68,6 +70,16 @@ class BaseEvaluator(ABC):
         """Run this evaluator against the consequence tree."""
         core_prompt = self._get_core_prompt(context)
         system_prompt = assemble_prompt(self.stage, core_prompt, self.hat_config)
+
+        # ADR-030: when evaluating a situation, amend the system prompt
+        if context.evaluation_mode == "situation":
+            situation_note = (
+                "\n\nNOTE: You are evaluating a SITUATION, not an action the agent "
+                "is taking. The agent has declined or escalated this request. Your "
+                "job is to assess how dangerous the customer's request was, not "
+                "whether the agent's response is appropriate."
+            )
+            system_prompt = system_prompt + situation_note
 
         response = await self.llm.complete(
             system_prompt=system_prompt,

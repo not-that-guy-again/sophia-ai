@@ -92,7 +92,12 @@ class ResponseGenerator:
         )
         return response.content.strip()
 
-    async def converse(self, user_message: str, conversation_history: list[dict] | None = None) -> str:
+    async def converse(
+        self,
+        user_message: str,
+        conversation_history: list[dict] | None = None,
+        situation_tier: str | None = None,
+    ) -> str:
         """Generate a direct conversational response (no tool execution)."""
         core_prompt = CONVERSE_SYSTEM_PROMPT.format(
             domain_context=self._get_domain_context(),
@@ -103,6 +108,16 @@ class ResponseGenerator:
             self.hat_config,
             constitution=self._constitution_with_time(),
         )
+
+        # ADR-030: shape refusal language based on situation tier
+        if situation_tier and situation_tier != "GREEN":
+            tier_instruction = (
+                f"\n\nThe evaluation pipeline assessed this situation as {situation_tier}. "
+                "Your response should reflect appropriate firmness. For ORANGE, be clear "
+                "and direct in your decline. For RED, be unambiguous — do not soften the "
+                "refusal or suggest the request might be fulfilled under different circumstances."
+            )
+            system_prompt = system_prompt + tier_instruction
 
         response = await self.llm.complete(
             system_prompt=system_prompt,
