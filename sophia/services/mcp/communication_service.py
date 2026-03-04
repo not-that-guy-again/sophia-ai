@@ -63,17 +63,25 @@ class MCPCommunicationService(CommunicationService):
 
         if contact.channel == "slack":
             if not self.slack_client:
-                raise ValueError(
-                    "Slack channel is referenced in policy but no Slack MCP "
-                    "is configured in hat.json communications.channels.slack"
+                return CommunicationResult(
+                    success=False,
+                    channel="slack",
+                    failure_reason=(
+                        "Slack channel is referenced in policy but no Slack MCP "
+                        "is configured in hat.json communications.channels.slack"
+                    ),
                 )
             return await self._send_slack(contact, message)
 
         elif contact.channel == "email":
             if not self.gmail_client:
-                raise ValueError(
-                    "Email channel is referenced in policy but no Gmail MCP "
-                    "is configured in hat.json communications.channels.email"
+                return CommunicationResult(
+                    success=False,
+                    channel="email",
+                    failure_reason=(
+                        "Email channel is referenced in policy but no Gmail MCP "
+                        "is configured in hat.json communications.channels.email"
+                    ),
                 )
             return await self._send_email(contact, message)
 

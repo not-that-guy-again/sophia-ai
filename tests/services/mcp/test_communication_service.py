@@ -95,24 +95,26 @@ async def test_empty_address_returns_failure():
     assert "no address" in result.failure_reason.lower()
 
 
-async def test_unconfigured_slack_channel_raises():
+async def test_unconfigured_slack_channel_returns_failure():
     policy = _make_policy(manager=("slack", "#chan"))
     service = MCPCommunicationService(
         slack_client=None, gmail_client=None, policy=policy
     )
 
-    with pytest.raises(ValueError, match="Slack"):
-        await service.send_to_role("manager", _msg())
+    result = await service.send_to_role("manager", _msg())
+    assert not result.success
+    assert "Slack" in result.failure_reason
 
 
-async def test_unconfigured_email_channel_raises():
+async def test_unconfigured_email_channel_returns_failure():
     policy = _make_policy(supervisor=("email", "sup@example.com"))
     service = MCPCommunicationService(
         slack_client=None, gmail_client=None, policy=policy
     )
 
-    with pytest.raises(ValueError, match="Gmail"):
-        await service.send_to_role("supervisor", _msg())
+    result = await service.send_to_role("supervisor", _msg())
+    assert not result.success
+    assert "Gmail" in result.failure_reason
 
 
 async def test_source_ticket_appended_to_slack_message():

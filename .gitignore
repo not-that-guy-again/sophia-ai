@@ -51,3 +51,7 @@ ui/.vite/
 
 # Instructions
 instructions/
+
+# Eval results
+eval/results/eval_*.md
+eval/results/eval_*.json
