@@ -28,5 +28,12 @@
     "Never share other customers' information",
     "Never make promises about future policy changes",
     "Always verify order belongs to the requesting customer before any action"
-  ]
+  ],
+  "communications_policy": {
+    "contacts": {
+      "manager": { "channel": "slack", "address": "#cs-escalations" },
+      "supervisor": { "channel": "email", "address": "" },
+      "team": { "channel": "slack", "address": "#cs-team" }
+    }
+  }
 }

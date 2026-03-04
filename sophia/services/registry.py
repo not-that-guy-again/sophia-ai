@@ -18,6 +18,7 @@ def _default_providers() -> dict[tuple[str, str], type]:
         MockOrderService,
         MockShippingService,
     )
+    from sophia.services.mock.communication import MockCommunicationService
 
     return {
         ("order", "mock"): MockOrderService,
@@ -25,6 +26,7 @@ def _default_providers() -> dict[tuple[str, str], type]:
         ("shipping", "mock"): MockShippingService,
         ("inventory", "mock"): MockInventoryService,
         ("compensation", "mock"): MockCompensationService,
+        ("communication", "mock"): MockCommunicationService,
     }
 
 

@@ -29,7 +29,7 @@ def test_load_hat():
 
     assert hat.manifest.name == "customer-service"
     assert hat.manifest.display_name == "Customer Service"
-    assert len(hat.manifest.tools) == 19
+    assert len(hat.manifest.tools) == 21
     assert "look_up_order" in hat.manifest.tools
     assert "escalate_to_human" in hat.manifest.tools
 

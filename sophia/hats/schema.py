@@ -34,6 +34,7 @@ class HatManifest(BaseModel):
     backends: dict[str, dict] = Field(default_factory=dict)
     webhooks: dict[str, dict] = Field(default_factory=dict)
     notifications: dict[str, Any] = Field(default_factory=dict)
+    communications: dict[str, Any] = Field(default_factory=dict)
 
 
 class EvaluatorConfig(BaseModel):
