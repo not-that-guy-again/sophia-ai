@@ -99,11 +99,13 @@ async def test_trigger_pipeline_calls_agent_loop():
     mock_loop.process.assert_awaited_once_with(
         message="Shipment delay for order ORD-500.",
         source="webhook",
-        metadata={"event": {
-            "source": "shopify",
-            "event_type": "DELIVERY_EXCEPTION",
-            "entity_id": "ORD-500",
-        }},
+        metadata={
+            "event": {
+                "source": "shopify",
+                "event_type": "DELIVERY_EXCEPTION",
+                "entity_id": "ORD-500",
+            }
+        },
     )
 
 

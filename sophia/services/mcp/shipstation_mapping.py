@@ -25,9 +25,7 @@ def _extract_json(result: MCPToolResult) -> dict:
             try:
                 return json.loads(block["text"])
             except (json.JSONDecodeError, KeyError) as exc:
-                raise MCPParseError(
-                    f"Failed to parse MCP text content as JSON: {exc}"
-                ) from exc
+                raise MCPParseError(f"Failed to parse MCP text content as JSON: {exc}") from exc
     raise MCPParseError("No text content block found in MCP result")
 
 

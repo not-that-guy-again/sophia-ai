@@ -44,51 +44,64 @@ async def store_decision(session: AsyncSession, result: PipelineResult, input_me
 
     # Store proposals
     for rank, candidate in enumerate(result.proposal.candidates):
-        session.add(DecisionProposal(
-            decision_id=decision.id,
-            rank=rank,
-            tool_name=candidate.tool_name,
-            parameters=candidate.parameters,
-            reasoning=candidate.reasoning,
-            expected_outcome=candidate.expected_outcome,
-        ))
+        session.add(
+            DecisionProposal(
+                decision_id=decision.id,
+                rank=rank,
+                tool_name=candidate.tool_name,
+                parameters=candidate.parameters,
+                reasoning=candidate.reasoning,
+                expected_outcome=candidate.expected_outcome,
+            )
+        )
 
     # Store consequence trees
     for tree in result.consequence_trees:
-        session.add(DecisionTree(
-            decision_id=decision.id,
-            candidate_tool_name=tree.candidate_action.tool_name,
-            tree_data=_tree_to_dict(tree),
-            total_nodes=tree.total_nodes,
-            worst_harm=tree.worst_terminal.harm_benefit if tree.worst_terminal else None,
-            best_benefit=tree.best_terminal.harm_benefit if tree.best_terminal else None,
-        ))
+        session.add(
+            DecisionTree(
+                decision_id=decision.id,
+                candidate_tool_name=tree.candidate_action.tool_name,
+                tree_data=_tree_to_dict(tree),
+                total_nodes=tree.total_nodes,
+                worst_harm=tree.worst_terminal.harm_benefit if tree.worst_terminal else None,
+                best_benefit=tree.best_terminal.harm_benefit if tree.best_terminal else None,
+            )
+        )
 
     # Store evaluations
     for eval_result in result.evaluation_results:
-        session.add(DecisionEvaluation(
-            decision_id=decision.id,
-            evaluator_name=eval_result.evaluator_name,
-            score=eval_result.score,
-            confidence=eval_result.confidence,
-            flags=eval_result.flags,
-            reasoning=eval_result.reasoning,
-            key_concerns=eval_result.key_concerns,
-        ))
+        session.add(
+            DecisionEvaluation(
+                decision_id=decision.id,
+                evaluator_name=eval_result.evaluator_name,
+                score=eval_result.score,
+                confidence=eval_result.confidence,
+                flags=eval_result.flags,
+                reasoning=eval_result.reasoning,
+                key_concerns=eval_result.key_concerns,
+            )
+        )
 
     # Snapshot hat config if available
     if hat_name != "none":
-        session.add(HatConfigSnapshot(
-            decision_id=decision.id,
-            hat_name=hat_name,
-            hat_version=result.metadata.get("hat_version", "unknown"),
-            constraints=result.intent.parameters if result.intent else {},
-            stakeholders={},
-            evaluator_config={},
-        ))
+        session.add(
+            HatConfigSnapshot(
+                decision_id=decision.id,
+                hat_name=hat_name,
+                hat_version=result.metadata.get("hat_version", "unknown"),
+                constraints=result.intent.parameters if result.intent else {},
+                stakeholders={},
+                evaluator_config={},
+            )
+        )
 
     await session.commit()
-    logger.info("Audit record stored: decision_id=%d hat=%s tier=%s", decision.id, hat_name, decision.risk_tier)
+    logger.info(
+        "Audit record stored: decision_id=%d hat=%s tier=%s",
+        decision.id,
+        hat_name,
+        decision.risk_tier,
+    )
     return decision.id
 
 
@@ -117,48 +130,61 @@ async def store_decision_with_hat(
     await session.flush()
 
     for rank, candidate in enumerate(result.proposal.candidates):
-        session.add(DecisionProposal(
-            decision_id=decision.id,
-            rank=rank,
-            tool_name=candidate.tool_name,
-            parameters=candidate.parameters,
-            reasoning=candidate.reasoning,
-            expected_outcome=candidate.expected_outcome,
-        ))
+        session.add(
+            DecisionProposal(
+                decision_id=decision.id,
+                rank=rank,
+                tool_name=candidate.tool_name,
+                parameters=candidate.parameters,
+                reasoning=candidate.reasoning,
+                expected_outcome=candidate.expected_outcome,
+            )
+        )
 
     for tree in result.consequence_trees:
-        session.add(DecisionTree(
-            decision_id=decision.id,
-            candidate_tool_name=tree.candidate_action.tool_name,
-            tree_data=_tree_to_dict(tree),
-            total_nodes=tree.total_nodes,
-            worst_harm=tree.worst_terminal.harm_benefit if tree.worst_terminal else None,
-            best_benefit=tree.best_terminal.harm_benefit if tree.best_terminal else None,
-        ))
+        session.add(
+            DecisionTree(
+                decision_id=decision.id,
+                candidate_tool_name=tree.candidate_action.tool_name,
+                tree_data=_tree_to_dict(tree),
+                total_nodes=tree.total_nodes,
+                worst_harm=tree.worst_terminal.harm_benefit if tree.worst_terminal else None,
+                best_benefit=tree.best_terminal.harm_benefit if tree.best_terminal else None,
+            )
+        )
 
     for eval_result in result.evaluation_results:
-        session.add(DecisionEvaluation(
-            decision_id=decision.id,
-            evaluator_name=eval_result.evaluator_name,
-            score=eval_result.score,
-            confidence=eval_result.confidence,
-            flags=eval_result.flags,
-            reasoning=eval_result.reasoning,
-            key_concerns=eval_result.key_concerns,
-        ))
+        session.add(
+            DecisionEvaluation(
+                decision_id=decision.id,
+                evaluator_name=eval_result.evaluator_name,
+                score=eval_result.score,
+                confidence=eval_result.confidence,
+                flags=eval_result.flags,
+                reasoning=eval_result.reasoning,
+                key_concerns=eval_result.key_concerns,
+            )
+        )
 
     if hat_config is not None:
-        session.add(HatConfigSnapshot(
-            decision_id=decision.id,
-            hat_name=hat_config.name,
-            hat_version=hat_config.manifest.version,
-            constraints=hat_config.constraints,
-            stakeholders=hat_config.stakeholders.model_dump(),
-            evaluator_config=hat_config.evaluator_config.model_dump(),
-        ))
+        session.add(
+            HatConfigSnapshot(
+                decision_id=decision.id,
+                hat_name=hat_config.name,
+                hat_version=hat_config.manifest.version,
+                constraints=hat_config.constraints,
+                stakeholders=hat_config.stakeholders.model_dump(),
+                evaluator_config=hat_config.evaluator_config.model_dump(),
+            )
+        )
 
     await session.commit()
-    logger.info("Audit record stored: decision_id=%d hat=%s tier=%s", decision.id, hat_name, decision.risk_tier)
+    logger.info(
+        "Audit record stored: decision_id=%d hat=%s tier=%s",
+        decision.id,
+        hat_name,
+        decision.risk_tier,
+    )
     return decision.id
 
 

@@ -8,7 +8,9 @@ from sophia.auth.models import APIKeyRecord
 from sophia.audit.database import get_session
 
 
-def generate_key(tenant_id: str, hat_name: str = "customer-service", scopes: list[str] | None = None) -> tuple[str, APIKeyRecord]:
+def generate_key(
+    tenant_id: str, hat_name: str = "customer-service", scopes: list[str] | None = None
+) -> tuple[str, APIKeyRecord]:
     """Generate a new API key.
 
     Returns (full_key, record_with_hash). The full key is only available at

@@ -17,9 +17,7 @@ class MCPCompensationService(CompensationService):
     def __init__(self, client: MCPClient, tool_mapping: dict):
         self.adapter = MCPServiceAdapter(client, tool_mapping)
 
-    async def apply_discount(
-        self, customer_id: str, percent: int, reason: str
-    ) -> DiscountResult:
+    async def apply_discount(self, customer_id: str, percent: int, reason: str) -> DiscountResult:
         return await self.adapter._call(
             "apply_discount", customer_id=customer_id, percent=percent, reason=reason
         )
@@ -31,12 +29,8 @@ class MCPCompensationService(CompensationService):
             "process_partial_refund", order_id=order_id, amount=amount, reason=reason
         )
 
-    async def process_full_refund(
-        self, order_id: str, reason: str
-    ) -> RefundResult:
-        return await self.adapter._call(
-            "process_full_refund", order_id=order_id, reason=reason
-        )
+    async def process_full_refund(self, order_id: str, reason: str) -> RefundResult:
+        return await self.adapter._call("process_full_refund", order_id=order_id, reason=reason)
 
     async def apply_free_shipping(
         self, customer_id: str, order_id: str | None, reason: str
@@ -48,12 +42,8 @@ class MCPCompensationService(CompensationService):
             reason=reason,
         )
 
-    async def generate_coupon(
-        self, customer_id: str, params: CouponParams
-    ) -> CouponResult:
-        return await self.adapter._call(
-            "generate_coupon", customer_id=customer_id, params=params
-        )
+    async def generate_coupon(self, customer_id: str, params: CouponParams) -> CouponResult:
+        return await self.adapter._call("generate_coupon", customer_id=customer_id, params=params)
 
     async def initiate_return(
         self, order_id: str, items: list[ReturnItem], reason: str

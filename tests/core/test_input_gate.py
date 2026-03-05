@@ -8,14 +8,20 @@ from tests.conftest import MockLLMProvider
 
 
 @pytest.mark.asyncio
-async def test_input_gate_parses_refund_intent(mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig):
-    mock_llm.set_responses([
-        json.dumps({
-            "action_requested": "refund",
-            "target": "ORD-12345",
-            "parameters": {"reason": "damaged product"},
-        })
-    ])
+async def test_input_gate_parses_refund_intent(
+    mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig
+):
+    mock_llm.set_responses(
+        [
+            json.dumps(
+                {
+                    "action_requested": "refund",
+                    "target": "ORD-12345",
+                    "parameters": {"reason": "damaged product"},
+                }
+            )
+        ]
+    )
 
     gate = InputGate(
         llm=mock_llm,
@@ -32,10 +38,14 @@ async def test_input_gate_parses_refund_intent(mock_llm: MockLLMProvider, tool_r
 
 
 @pytest.mark.asyncio
-async def test_input_gate_handles_code_blocks(mock_llm: MockLLMProvider, tool_registry, cs_hat_config):
-    mock_llm.set_responses([
-        '```json\n{"action_requested": "order_status", "target": "ORD-11111", "parameters": {}}\n```'
-    ])
+async def test_input_gate_handles_code_blocks(
+    mock_llm: MockLLMProvider, tool_registry, cs_hat_config
+):
+    mock_llm.set_responses(
+        [
+            '```json\n{"action_requested": "order_status", "target": "ORD-11111", "parameters": {}}\n```'
+        ]
+    )
 
     gate = InputGate(
         llm=mock_llm,
@@ -50,13 +60,17 @@ async def test_input_gate_handles_code_blocks(mock_llm: MockLLMProvider, tool_re
 
 @pytest.mark.asyncio
 async def test_input_gate_general_inquiry(mock_llm: MockLLMProvider, tool_registry, cs_hat_config):
-    mock_llm.set_responses([
-        json.dumps({
-            "action_requested": "general_inquiry",
-            "target": None,
-            "parameters": {},
-        })
-    ])
+    mock_llm.set_responses(
+        [
+            json.dumps(
+                {
+                    "action_requested": "general_inquiry",
+                    "target": None,
+                    "parameters": {},
+                }
+            )
+        ]
+    )
 
     gate = InputGate(
         llm=mock_llm,
@@ -70,15 +84,21 @@ async def test_input_gate_general_inquiry(mock_llm: MockLLMProvider, tool_regist
 
 
 @pytest.mark.asyncio
-async def test_cross_customer_access_not_general_inquiry(mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig):
+async def test_cross_customer_access_not_general_inquiry(
+    mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig
+):
     """Input gate can classify cross-customer access requests distinctly."""
-    mock_llm.set_responses([
-        json.dumps({
-            "action_requested": "cross_customer_access",
-            "target": None,
-            "parameters": {"person": "Sarah Johnson"},
-        })
-    ])
+    mock_llm.set_responses(
+        [
+            json.dumps(
+                {
+                    "action_requested": "cross_customer_access",
+                    "target": None,
+                    "parameters": {"person": "Sarah Johnson"},
+                }
+            )
+        ]
+    )
 
     gate = InputGate(
         llm=mock_llm,
@@ -99,11 +119,13 @@ def test_input_gate_prompt_includes_cross_customer_example():
 
 
 @pytest.mark.asyncio
-async def test_input_gate_includes_hat_prompt(mock_llm: MockLLMProvider, tool_registry, cs_hat_config):
+async def test_input_gate_includes_hat_prompt(
+    mock_llm: MockLLMProvider, tool_registry, cs_hat_config
+):
     """Verify that the hat's system prompt fragment is included."""
-    mock_llm.set_responses([
-        json.dumps({"action_requested": "general_inquiry", "target": None, "parameters": {}})
-    ])
+    mock_llm.set_responses(
+        [json.dumps({"action_requested": "general_inquiry", "target": None, "parameters": {}})]
+    )
 
     gate = InputGate(
         llm=mock_llm,

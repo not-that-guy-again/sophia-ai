@@ -23,84 +23,91 @@ def _refund_candidate() -> CandidateAction:
 def _ps5_candidate() -> CandidateAction:
     return CandidateAction(
         tool_name="place_new_order",
-        parameters={"customer_id": "CUST-002", "items": [{"product_id": "PROD-003", "quantity": 1}]},
+        parameters={
+            "customer_id": "CUST-002",
+            "items": [{"product_id": "PROD-003", "quantity": 1}],
+        },
         reasoning="Customer requesting a free PlayStation 5.",
         expected_outcome="Customer receives a PlayStation 5.",
     )
 
 
-BENIGN_TREE_JSON = json.dumps({
-    "consequences": [
-        {
-            "description": "Customer receives refund for damaged product",
-            "stakeholders_affected": ["customer", "business"],
-            "probability": 0.95,
-            "tangibility": 0.9,
-            "harm_benefit": 0.6,
-            "affected_party": "customer",
-            "is_terminal": False,
-            "children": [
-                {
-                    "description": "Customer is satisfied and retained",
-                    "stakeholders_affected": ["customer", "business"],
-                    "probability": 0.8,
-                    "tangibility": 0.7,
-                    "harm_benefit": 0.5,
-                    "affected_party": "business",
-                    "is_terminal": True,
-                    "children": [],
-                }
-            ],
-        },
-        {
-            "description": "Business loses $79.99 revenue",
-            "stakeholders_affected": ["business"],
-            "probability": 0.95,
-            "tangibility": 1.0,
-            "harm_benefit": -0.2,
-            "affected_party": "business",
-            "is_terminal": True,
-            "children": [],
-        },
-    ]
-})
+BENIGN_TREE_JSON = json.dumps(
+    {
+        "consequences": [
+            {
+                "description": "Customer receives refund for damaged product",
+                "stakeholders_affected": ["customer", "business"],
+                "probability": 0.95,
+                "tangibility": 0.9,
+                "harm_benefit": 0.6,
+                "affected_party": "customer",
+                "is_terminal": False,
+                "children": [
+                    {
+                        "description": "Customer is satisfied and retained",
+                        "stakeholders_affected": ["customer", "business"],
+                        "probability": 0.8,
+                        "tangibility": 0.7,
+                        "harm_benefit": 0.5,
+                        "affected_party": "business",
+                        "is_terminal": True,
+                        "children": [],
+                    }
+                ],
+            },
+            {
+                "description": "Business loses $79.99 revenue",
+                "stakeholders_affected": ["business"],
+                "probability": 0.95,
+                "tangibility": 1.0,
+                "harm_benefit": -0.2,
+                "affected_party": "business",
+                "is_terminal": True,
+                "children": [],
+            },
+        ]
+    }
+)
 
 
-CATASTROPHIC_TREE_JSON = json.dumps({
-    "consequences": [
-        {
-            "description": "Customer receives free PS5 worth $499",
-            "stakeholders_affected": ["customer", "business"],
-            "probability": 0.95,
-            "tangibility": 1.0,
-            "harm_benefit": -0.9,
-            "affected_party": "business",
-            "is_terminal": False,
-            "children": [
-                {
-                    "description": "Sets precedent for giving away expensive items",
-                    "stakeholders_affected": ["business", "other_customers"],
-                    "probability": 0.7,
-                    "tangibility": 0.8,
-                    "harm_benefit": -0.85,
-                    "affected_party": "business",
-                    "is_terminal": True,
-                    "children": [],
-                }
-            ],
-        },
-        {
-            "description": "Customer is delighted",
-            "stakeholders_affected": ["customer"],
-            "probability": 0.95,
-            "tangibility": 0.9,
-            "harm_benefit": 0.9,
-            "affected_party": "customer",
-            "is_terminal": True,
-            "children": [],
-        },
-    ]
-})
+CATASTROPHIC_TREE_JSON = json.dumps(
+    {
+        "consequences": [
+            {
+                "description": "Customer receives free PS5 worth $499",
+                "stakeholders_affected": ["customer", "business"],
+                "probability": 0.95,
+                "tangibility": 1.0,
+                "harm_benefit": -0.9,
+                "affected_party": "business",
+                "is_terminal": False,
+                "children": [
+                    {
+                        "description": "Sets precedent for giving away expensive items",
+                        "stakeholders_affected": ["business", "other_customers"],
+                        "probability": 0.7,
+                        "tangibility": 0.8,
+                        "harm_benefit": -0.85,
+                        "affected_party": "business",
+                        "is_terminal": True,
+                        "children": [],
+                    }
+                ],
+            },
+            {
+                "description": "Customer is delighted",
+                "stakeholders_affected": ["customer"],
+                "probability": 0.95,
+                "tangibility": 0.9,
+                "harm_benefit": 0.9,
+                "affected_party": "customer",
+                "is_terminal": True,
+                "children": [],
+            },
+        ]
+    }
+)
 
 
 @pytest.mark.asyncio
@@ -158,20 +165,22 @@ async def test_engine_assigns_unique_ids(mock_llm: MockLLMProvider, cs_hat_confi
 @pytest.mark.asyncio
 async def test_engine_clamps_scores(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Scores outside valid ranges should be clamped."""
-    out_of_range = json.dumps({
-        "consequences": [
-            {
-                "description": "Out-of-range scores",
-                "stakeholders_affected": ["customer"],
-                "probability": 1.5,  # should clamp to 1.0
-                "tangibility": -0.3,  # should clamp to 0.0
-                "harm_benefit": -2.0,  # should clamp to -1.0
-                "affected_party": "customer",
-                "is_terminal": True,
-                "children": [],
-            }
-        ]
-    })
+    out_of_range = json.dumps(
+        {
+            "consequences": [
+                {
+                    "description": "Out-of-range scores",
+                    "stakeholders_affected": ["customer"],
+                    "probability": 1.5,  # should clamp to 1.0
+                    "tangibility": -0.3,  # should clamp to 0.0
+                    "harm_benefit": -2.0,  # should clamp to -1.0
+                    "affected_party": "customer",
+                    "is_terminal": True,
+                    "children": [],
+                }
+            ]
+        }
+    )
     mock_llm.set_responses([out_of_range])
 
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config, max_depth=3)
@@ -234,25 +243,28 @@ async def test_engine_validates_stakeholder_refs(
     mock_llm: MockLLMProvider, cs_hat_config: HatConfig, caplog
 ):
     """Invalid stakeholder refs should be logged as warnings."""
-    invalid_ref_json = json.dumps({
-        "consequences": [
-            {
-                "description": "Some consequence",
-                "stakeholders_affected": ["customer", "invalid_stakeholder"],
-                "probability": 0.5,
-                "tangibility": 0.5,
-                "harm_benefit": 0.0,
-                "affected_party": "customer",
-                "is_terminal": True,
-                "children": [],
-            }
-        ]
-    })
+    invalid_ref_json = json.dumps(
+        {
+            "consequences": [
+                {
+                    "description": "Some consequence",
+                    "stakeholders_affected": ["customer", "invalid_stakeholder"],
+                    "probability": 0.5,
+                    "tangibility": 0.5,
+                    "harm_benefit": 0.0,
+                    "affected_party": "customer",
+                    "is_terminal": True,
+                    "children": [],
+                }
+            ]
+        }
+    )
     mock_llm.set_responses([invalid_ref_json])
 
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config, max_depth=3)
 
     import logging
+
     with caplog.at_level(logging.WARNING):
         tree = await engine.analyze(_refund_candidate())
 

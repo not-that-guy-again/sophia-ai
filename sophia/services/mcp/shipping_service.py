@@ -27,9 +27,5 @@ class MCPShippingService(ShippingService):
             "update_shipping_address", order_id=order_id, new_address=new_address
         )
 
-    async def generate_return_label(
-        self, order_id: str, reason: str
-    ) -> ReturnLabel:
-        return await self.adapter._call(
-            "generate_return_label", order_id=order_id, reason=reason
-        )
+    async def generate_return_label(self, order_id: str, reason: str) -> ReturnLabel:
+        return await self.adapter._call("generate_return_label", order_id=order_id, reason=reason)

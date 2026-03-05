@@ -75,10 +75,13 @@ def client(app, admin_key):
 async def test_full_key_lifecycle(app, client, admin_key):
     """Create a key, use it, revoke it, verify it no longer works."""
     # 1. Create a new key (same tenant as admin for tenant-scoped operations)
-    resp = client.post("/admin/keys", json={
-        "tenant_id": "test-admin",
-        "scopes": ["chat"],
-    })
+    resp = client.post(
+        "/admin/keys",
+        json={
+            "tenant_id": "test-admin",
+            "scopes": ["chat"],
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     new_key = data["key"]
@@ -123,10 +126,13 @@ async def test_invalid_key(app):
 async def test_scope_enforcement(app, client, admin_key):
     """Key without required scope is rejected with 403."""
     # Create a key with only "chat" scope (no "admin")
-    resp = client.post("/admin/keys", json={
-        "tenant_id": "limited-tenant",
-        "scopes": ["chat"],
-    })
+    resp = client.post(
+        "/admin/keys",
+        json={
+            "tenant_id": "limited-tenant",
+            "scopes": ["chat"],
+        },
+    )
     limited_key = resp.json()["key"]
 
     # Try to access admin endpoint with chat-only key

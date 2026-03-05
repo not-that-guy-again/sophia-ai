@@ -89,6 +89,7 @@ def _slot_fill(template: str, parameters: dict) -> str:
 
     Missing keys are removed and surrounding artifacts cleaned up.
     """
+
     def replacer(match: re.Match) -> str:
         key = match.group(1)
         value = parameters.get(key)

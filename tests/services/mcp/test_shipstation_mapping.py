@@ -83,9 +83,7 @@ class TestParseShipstationReturnLabel:
         data = {
             "label_id": "se-label-123",
             "tracking_number": "9400111899223397846123",
-            "label_download": {
-                "pdf": "https://api.shipstation.com/v2/downloads/10/label.pdf"
-            },
+            "label_download": {"pdf": "https://api.shipstation.com/v2/downloads/10/label.pdf"},
             "shipment_id": "se-ship-456",
             "carrier_code": "usps",
         }

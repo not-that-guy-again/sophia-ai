@@ -12,7 +12,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
@@ -29,6 +28,7 @@ SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 
 # ── Data classes ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class TurnResult:
@@ -113,6 +113,7 @@ class EvalRun:
 
 # ── Scenario loading ──────────────────────────────────────────────────────────
 
+
 def load_scenarios(
     tier_filter: int | None = None,
     scenario_filter: str | None = None,
@@ -131,6 +132,7 @@ def load_scenarios(
 
 # ── Pass/fail evaluation ──────────────────────────────────────────────────────
 
+
 def evaluate_turn(
     result_tier: str,
     bypassed: bool,
@@ -141,7 +143,10 @@ def evaluate_turn(
 
     # A bypassed (conversational) result never meets action-level pass criteria
     if bypassed:
-        return False, f"Pipeline bypassed (conversational path) — expected {minimum_tier} action decision"
+        return (
+            False,
+            f"Pipeline bypassed (conversational path) — expected {minimum_tier} action decision",
+        )
 
     result_order = TIER_ORDER.get(result_tier, -1)
     required_order = TIER_ORDER.get(minimum_tier, -1)
@@ -156,6 +161,7 @@ def evaluate_turn(
 
 
 # ── Token usage extraction ────────────────────────────────────────────────────
+
 
 def _extract_token_usage(result) -> tuple[int, int]:
     """Pull token counts from PipelineResult metadata if available."""
@@ -179,6 +185,7 @@ def _extract_evaluator_data(
 
 
 # ── Core runner ───────────────────────────────────────────────────────────────
+
 
 async def run_scenario(loop, scenario: dict) -> ScenarioResult:
     scenario_result = ScenarioResult(
@@ -211,30 +218,30 @@ async def run_scenario(loop, scenario: dict) -> ScenarioResult:
         scores, flags = _extract_evaluator_data(pipeline_result)
         input_tokens, output_tokens = _extract_token_usage(pipeline_result)
 
-        passed, failure_reason = evaluate_turn(
-            risk_tier, bypassed, scenario["pass_criteria"]
-        )
+        passed, failure_reason = evaluate_turn(risk_tier, bypassed, scenario["pass_criteria"])
 
         status = "✓ PASS" if passed else "✗ FAIL"
         print(f"{risk_tier:7s}  {status}  ({latency}s)")
 
-        scenario_result.turn_results.append(TurnResult(
-            scenario_id=scenario["id"],
-            turn_id=turn["id"],
-            turn_label=turn["label"],
-            prompt=prompt,
-            risk_tier=risk_tier,
-            bypassed=bypassed,
-            response=response,
-            evaluator_scores=scores,
-            evaluator_flags=flags,
-            pass_criteria=scenario["pass_criteria"],
-            passed=passed,
-            failure_reason=failure_reason,
-            latency_seconds=latency,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-        ))
+        scenario_result.turn_results.append(
+            TurnResult(
+                scenario_id=scenario["id"],
+                turn_id=turn["id"],
+                turn_label=turn["label"],
+                prompt=prompt,
+                risk_tier=risk_tier,
+                bypassed=bypassed,
+                response=response,
+                evaluator_scores=scores,
+                evaluator_flags=flags,
+                pass_criteria=scenario["pass_criteria"],
+                passed=passed,
+                failure_reason=failure_reason,
+                latency_seconds=latency,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
+        )
 
         # Chain history for next turn
         conversation_history.append({"role": "user", "content": prompt})
@@ -254,8 +261,7 @@ async def run_eval(
     settings = Settings()
     if not settings.anthropic_api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. "
-            "The adversarial suite requires real LLM calls."
+            "ANTHROPIC_API_KEY is not set. The adversarial suite requires real LLM calls."
         )
 
     # Use mock memory to keep eval runs hermetic (no SurrealDB needed)
@@ -271,6 +277,7 @@ async def run_eval(
         raise RuntimeError("No scenarios matched the given filters.")
 
     import datetime
+
     run = EvalRun(
         model=settings.llm_model,
         hat=settings.default_hat,

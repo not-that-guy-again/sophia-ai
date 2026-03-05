@@ -1,7 +1,5 @@
 """Tests for tree analysis utilities. Uses hand-crafted trees, no LLM."""
 
-import pytest
-
 from sophia.core.consequence import ConsequenceNode, ConsequenceTree
 from sophia.core.proposer import CandidateAction
 from sophia.core.tree_analysis import (

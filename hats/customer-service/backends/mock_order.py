@@ -32,12 +32,8 @@ class MockOrderService(OrderService):
             tracking_number=order.tracking_number,
         )
 
-    async def search_orders_by_customer(
-        self, customer_id: str, limit: int = 20
-    ) -> list[Order]:
-        results = [
-            o for o in MockDataStore.orders.values() if o.customer_id == customer_id
-        ]
+    async def search_orders_by_customer(self, customer_id: str, limit: int = 20) -> list[Order]:
+        results = [o for o in MockDataStore.orders.values() if o.customer_id == customer_id]
         results.sort(key=lambda o: o.created_at, reverse=True)
         return results[:limit]
 

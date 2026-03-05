@@ -24,7 +24,8 @@ class TrackShipmentTool(Tool):
         tracking = await self.shipping_service.track_shipment(params["order_id"])
         if not tracking:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=f"No shipment tracking found for order {params['order_id']}",
             )
         return ToolResult(
@@ -66,11 +67,13 @@ class UpdateShippingAddressTool(Tool):
             country=params.get("country", "US"),
         )
         result = await self.shipping_service.update_shipping_address(
-            params["order_id"], new_address,
+            params["order_id"],
+            new_address,
         )
         if not result.success:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=result.failure_reason or "Address update failed",
             )
         return ToolResult(

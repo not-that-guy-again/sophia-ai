@@ -1,12 +1,9 @@
 """Tests for the deterministic risk classifier. No LLM calls."""
 
-import pytest
-
 from sophia.core.evaluators.base import EvaluatorResult
 from sophia.core.proposer import CandidateAction
 from sophia.core.risk_classifier import (
     classify,
-    _compute_weighted_score,
     _has_significant_disagreement,
     _score_to_tier,
     _bump_tier,
@@ -14,7 +11,9 @@ from sophia.core.risk_classifier import (
 from sophia.hats.schema import EvaluatorConfig, HatConfig, HatManifest
 
 
-def _make_result(name: str, score: float, confidence: float = 0.8, flags: list[str] | None = None) -> EvaluatorResult:
+def _make_result(
+    name: str, score: float, confidence: float = 0.8, flags: list[str] | None = None
+) -> EvaluatorResult:
     return EvaluatorResult(
         evaluator_name=name,
         score=score,
@@ -100,7 +99,7 @@ class TestDisagreement:
         results = [
             _make_result("self_interest", 0.5),
             _make_result("tribal", -0.4),  # diff = 0.9, one pair > 0.8
-            _make_result("domain", 0.1),   # all other pairs < 0.8
+            _make_result("domain", 0.1),  # all other pairs < 0.8
             _make_result("authority", 0.0),
         ]
         assert not _has_significant_disagreement(results)
@@ -151,8 +150,8 @@ class TestClassify:
         # Scores that would normally be YELLOW, but disagreement bumps to ORANGE
         results = [
             _make_result("self_interest", 0.8),
-            _make_result("tribal", -0.3),   # pair 1 with self: diff = 1.1
-            _make_result("domain", -0.4),   # pair 2 with self: diff = 1.2
+            _make_result("tribal", -0.3),  # pair 1 with self: diff = 1.1
+            _make_result("domain", -0.4),  # pair 2 with self: diff = 1.2
             _make_result("authority", 0.0),
         ]
         rc = classify(results, candidates=_make_candidates())
@@ -165,7 +164,12 @@ class TestClassify:
             manifest=HatManifest(name="test"),
             hat_path="/tmp/test",
             evaluator_config=EvaluatorConfig(
-                weight_overrides={"tribal": 0.80, "domain": 0.10, "self_interest": 0.05, "authority": 0.05},
+                weight_overrides={
+                    "tribal": 0.80,
+                    "domain": 0.10,
+                    "self_interest": 0.05,
+                    "authority": 0.05,
+                },
             ),
         )
         # Tribal very negative, others positive — hat weights tribal heavily

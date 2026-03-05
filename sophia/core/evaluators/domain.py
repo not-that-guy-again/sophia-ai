@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class DomainEvaluator(BaseEvaluator):
-
     @property
     def name(self) -> str:
         return "domain"
@@ -31,7 +30,9 @@ class DomainEvaluator(BaseEvaluator):
             custom_flags=self._get_custom_flags(),
             tree_summary=self.format_tree_summary(context.consequence_tree),
             stakeholders=self.format_stakeholders(context.stakeholders),
-            constraints=json.dumps(context.constraints, indent=2) if context.constraints else "No constraints.",
+            constraints=json.dumps(context.constraints, indent=2)
+            if context.constraints
+            else "No constraints.",
         )
 
     def _get_user_message(self, context: EvaluationContext) -> str:

@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from sophia.hats.loader import discover_hats, load_hat, load_hat_tools
-from sophia.hats.schema import HatConfig, HatManifest
 from tests.conftest import CS_HAT_DIR, HATS_DIR
 
 

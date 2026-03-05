@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 
 from sophia.services.communication import (
     CommunicationContact,
@@ -38,9 +37,7 @@ async def test_slack_channel_routes_to_slack_client():
         is_error=False,
     )
     policy = _make_policy(manager=("slack", "#escalations"))
-    service = MCPCommunicationService(
-        slack_client=slack, gmail_client=None, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=slack, gmail_client=None, policy=policy)
 
     result = await service.send_to_role("manager", _msg())
     assert result.success is True
@@ -59,9 +56,7 @@ async def test_email_channel_routes_to_gmail_client():
         is_error=False,
     )
     policy = _make_policy(supervisor=("email", "sup@example.com"))
-    service = MCPCommunicationService(
-        slack_client=None, gmail_client=gmail, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=None, gmail_client=gmail, policy=policy)
 
     result = await service.send_to_role("supervisor", _msg())
     assert result.success is True
@@ -75,9 +70,7 @@ async def test_email_channel_routes_to_gmail_client():
 
 async def test_unknown_role_returns_failure():
     policy = _make_policy(manager=("slack", "#chan"))
-    service = MCPCommunicationService(
-        slack_client=_mock_client(), gmail_client=None, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=_mock_client(), gmail_client=None, policy=policy)
 
     result = await service.send_to_role("nonexistent", _msg())
     assert result.success is False
@@ -86,9 +79,7 @@ async def test_unknown_role_returns_failure():
 
 async def test_empty_address_returns_failure():
     policy = _make_policy(supervisor=("email", ""))
-    service = MCPCommunicationService(
-        slack_client=None, gmail_client=_mock_client(), policy=policy
-    )
+    service = MCPCommunicationService(slack_client=None, gmail_client=_mock_client(), policy=policy)
 
     result = await service.send_to_role("supervisor", _msg())
     assert result.success is False
@@ -97,9 +88,7 @@ async def test_empty_address_returns_failure():
 
 async def test_unconfigured_slack_channel_returns_failure():
     policy = _make_policy(manager=("slack", "#chan"))
-    service = MCPCommunicationService(
-        slack_client=None, gmail_client=None, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=None, gmail_client=None, policy=policy)
 
     result = await service.send_to_role("manager", _msg())
     assert not result.success
@@ -108,9 +97,7 @@ async def test_unconfigured_slack_channel_returns_failure():
 
 async def test_unconfigured_email_channel_returns_failure():
     policy = _make_policy(supervisor=("email", "sup@example.com"))
-    service = MCPCommunicationService(
-        slack_client=None, gmail_client=None, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=None, gmail_client=None, policy=policy)
 
     result = await service.send_to_role("supervisor", _msg())
     assert not result.success
@@ -124,9 +111,7 @@ async def test_source_ticket_appended_to_slack_message():
         is_error=False,
     )
     policy = _make_policy(manager=("slack", "#chan"))
-    service = MCPCommunicationService(
-        slack_client=slack, gmail_client=None, policy=policy
-    )
+    service = MCPCommunicationService(slack_client=slack, gmail_client=None, policy=policy)
 
     msg = CommunicationMessage(
         subject="Test", body="body", priority="high", source_ticket="TKT-123"
@@ -137,12 +122,8 @@ async def test_source_ticket_appended_to_slack_message():
 
 
 async def test_get_contacts_returns_policy():
-    policy = _make_policy(
-        manager=("slack", "#chan"), team=("slack", "#team")
-    )
-    service = MCPCommunicationService(
-        slack_client=None, gmail_client=None, policy=policy
-    )
+    policy = _make_policy(manager=("slack", "#chan"), team=("slack", "#team"))
+    service = MCPCommunicationService(slack_client=None, gmail_client=None, policy=policy)
     contacts = await service.get_contacts()
     assert len(contacts) == 2
     roles = {c.role for c in contacts}

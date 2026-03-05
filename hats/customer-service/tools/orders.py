@@ -102,16 +102,19 @@ class PlaceNewOrderTool(Tool):
             details = await self.inventory_service.get_product_details(product_id)
             if not details:
                 return ToolResult(
-                    success=False, data=None,
+                    success=False,
+                    data=None,
                     message=f"Product {product_id} not found",
                 )
-            order_items.append(OrderItem(
-                product_id=product_id,
-                name=details.name,
-                quantity=quantity,
-                unit_price=details.price,
-                total_price=details.price * quantity,
-            ))
+            order_items.append(
+                OrderItem(
+                    product_id=product_id,
+                    name=details.name,
+                    quantity=quantity,
+                    unit_price=details.price,
+                    total_price=details.price * quantity,
+                )
+            )
 
         order = await self.order_service.place_order(customer_id, order_items)
         return ToolResult(
@@ -143,7 +146,8 @@ class CancelOrderTool(Tool):
         result = await self.order_service.cancel_order(order_id, params["reason"])
         if not result.success:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=result.reason or f"Cannot cancel order {order_id}",
             )
         return ToolResult(

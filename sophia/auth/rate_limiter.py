@@ -16,9 +16,7 @@ class RateLimiter:
             self._windows[key_id] = []
 
         # Clean old entries
-        self._windows[key_id] = [
-            t for t in self._windows[key_id] if t > window_start
-        ]
+        self._windows[key_id] = [t for t in self._windows[key_id] if t > window_start]
 
         if len(self._windows[key_id]) >= limit_rpm:
             return False

@@ -24,9 +24,7 @@ class CompensationService(ABC):
     ) -> RefundResult: ...
 
     @abstractmethod
-    async def process_full_refund(
-        self, order_id: str, reason: str
-    ) -> RefundResult: ...
+    async def process_full_refund(self, order_id: str, reason: str) -> RefundResult: ...
 
     @abstractmethod
     async def apply_free_shipping(
@@ -34,9 +32,7 @@ class CompensationService(ABC):
     ) -> FreeShippingResult: ...
 
     @abstractmethod
-    async def generate_coupon(
-        self, customer_id: str, params: CouponParams
-    ) -> CouponResult: ...
+    async def generate_coupon(self, customer_id: str, params: CouponParams) -> CouponResult: ...
 
     @abstractmethod
     async def initiate_return(

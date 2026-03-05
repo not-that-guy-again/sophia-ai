@@ -117,13 +117,15 @@ async def test_track_shipment_not_found(service_registry):
 async def test_update_shipping_address_success(service_registry):
     mod = _load_module("shipping")
     tool = _make_tool(mod.UpdateShippingAddressTool, service_registry)
-    result = await tool.execute({
-        "order_id": "ORD-67890",
-        "line1": "999 New St",
-        "city": "Boston",
-        "state": "MA",
-        "postal_code": "02101",
-    })
+    result = await tool.execute(
+        {
+            "order_id": "ORD-67890",
+            "line1": "999 New St",
+            "city": "Boston",
+            "state": "MA",
+            "postal_code": "02101",
+        }
+    )
     assert result.success
     # Restore
     MockDataStore.orders["ORD-67890"].shipping_address = None
@@ -132,13 +134,15 @@ async def test_update_shipping_address_success(service_registry):
 async def test_update_shipping_address_shipped(service_registry):
     mod = _load_module("shipping")
     tool = _make_tool(mod.UpdateShippingAddressTool, service_registry)
-    result = await tool.execute({
-        "order_id": "ORD-11111",
-        "line1": "999 New St",
-        "city": "Boston",
-        "state": "MA",
-        "postal_code": "02101",
-    })
+    result = await tool.execute(
+        {
+            "order_id": "ORD-11111",
+            "line1": "999 New St",
+            "city": "Boston",
+            "state": "MA",
+            "postal_code": "02101",
+        }
+    )
     assert not result.success
 
 
@@ -186,11 +190,13 @@ async def test_check_warranty_product_not_in_order(service_registry):
 async def test_initiate_return_success(service_registry):
     mod = _load_module("returns")
     tool = _make_tool(mod.InitiateReturnTool, service_registry)
-    result = await tool.execute({
-        "order_id": "ORD-12345",
-        "items": [{"product_id": "PROD-001", "quantity": 1, "reason": "defective"}],
-        "reason": "Product is defective",
-    })
+    result = await tool.execute(
+        {
+            "order_id": "ORD-12345",
+            "items": [{"product_id": "PROD-001", "quantity": 1, "reason": "defective"}],
+            "reason": "Product is defective",
+        }
+    )
     assert result.success
     assert result.data["return_label_url"] is not None  # free for defective
     # Clean up
@@ -200,11 +206,13 @@ async def test_initiate_return_success(service_registry):
 async def test_initiate_return_not_delivered(service_registry):
     mod = _load_module("returns")
     tool = _make_tool(mod.InitiateReturnTool, service_registry)
-    result = await tool.execute({
-        "order_id": "ORD-67890",
-        "items": [{"product_id": "PROD-003", "quantity": 1, "reason": "changed_mind"}],
-        "reason": "Changed my mind",
-    })
+    result = await tool.execute(
+        {
+            "order_id": "ORD-67890",
+            "items": [{"product_id": "PROD-003", "quantity": 1, "reason": "changed_mind"}],
+            "reason": "Changed my mind",
+        }
+    )
     assert not result.success
     assert "processing" in result.message
 

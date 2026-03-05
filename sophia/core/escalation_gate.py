@@ -10,14 +10,37 @@ from dataclasses import dataclass
 # Includes standard stopwords plus operator-perspective framing words
 # (triggers are written as "customer threatens X" — "customer" and "threatens"
 # describe the reporter's framing, not the content to match).
-_STOPWORDS = frozenset({
-    "the", "a", "an", "and", "or", "for", "with",
-    "that", "this", "from", "into", "have", "been",
-    "will", "when", "what", "your", "their",
-    # Operator-perspective framing words
-    "customer", "agent", "claims", "threatens",
-    "requests", "involves", "exceeds", "over",
-})
+_STOPWORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "into",
+        "have",
+        "been",
+        "will",
+        "when",
+        "what",
+        "your",
+        "their",
+        # Operator-perspective framing words
+        "customer",
+        "agent",
+        "claims",
+        "threatens",
+        "requests",
+        "involves",
+        "exceeds",
+        "over",
+    }
+)
 
 _MIN_KEYWORD_LEN = 4
 

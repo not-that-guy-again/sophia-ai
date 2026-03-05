@@ -17,9 +17,7 @@ from .mock_data import MockDataStore
 
 
 class MockCompensationService(CompensationService):
-    async def apply_discount(
-        self, customer_id: str, percent: int, reason: str
-    ) -> DiscountResult:
+    async def apply_discount(self, customer_id: str, percent: int, reason: str) -> DiscountResult:
         customer = MockDataStore.customers.get(customer_id)
         if not customer:
             raise ValueError(f"Customer {customer_id} not found")
@@ -39,9 +37,7 @@ class MockCompensationService(CompensationService):
         if not order:
             raise ValueError(f"Order {order_id} not found")
         if amount > order.total:
-            raise ValueError(
-                f"Refund amount ${amount:.2f} exceeds order total ${order.total:.2f}"
-            )
+            raise ValueError(f"Refund amount ${amount:.2f} exceeds order total ${order.total:.2f}")
 
         MockDataStore._next_refund_id += 1
         return RefundResult(
@@ -79,9 +75,7 @@ class MockCompensationService(CompensationService):
             estimated_savings=9.99,
         )
 
-    async def generate_coupon(
-        self, customer_id: str, params: CouponParams
-    ) -> CouponResult:
+    async def generate_coupon(self, customer_id: str, params: CouponParams) -> CouponResult:
         customer = MockDataStore.customers.get(customer_id)
         if not customer:
             raise ValueError(f"Customer {customer_id} not found")
@@ -103,9 +97,7 @@ class MockCompensationService(CompensationService):
             raise ValueError(f"Order {order_id} not found")
 
         if order.status != "delivered":
-            raise ValueError(
-                f"Cannot initiate return for order in '{order.status}' status"
-            )
+            raise ValueError(f"Cannot initiate return for order in '{order.status}' status")
 
         # Check 30-day window
         days_since_delivery = (datetime.now() - order.updated_at).days
@@ -128,11 +120,7 @@ class MockCompensationService(CompensationService):
         has_defective = any(
             i.reason in ("defective", "wrong_item", "not_as_described") for i in items
         )
-        label_url = (
-            f"https://labels.example.com/{uuid.uuid4().hex[:8]}"
-            if has_defective
-            else None
-        )
+        label_url = f"https://labels.example.com/{uuid.uuid4().hex[:8]}" if has_defective else None
 
         ret = ReturnStatus(
             return_id=return_id,
@@ -143,8 +131,10 @@ class MockCompensationService(CompensationService):
         )
         MockDataStore.returns[return_id] = ret
 
-        instructions = "Ship items back using the provided label." if has_defective else (
-            "Ship items back at your expense. Include the return ID on the package."
+        instructions = (
+            "Ship items back using the provided label."
+            if has_defective
+            else ("Ship items back at your expense. Include the return ID on the package.")
         )
 
         return ReturnInitiationResult(

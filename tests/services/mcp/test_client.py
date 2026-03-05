@@ -307,9 +307,7 @@ async def test_retry_reconnects_when_disconnected():
         if method == "tools/list":
             return httpx.Response(
                 200,
-                json=_make_jsonrpc_response(
-                    {"tools": []}, request_id=body["id"]
-                ),
+                json=_make_jsonrpc_response({"tools": []}, request_id=body["id"]),
             )
         # The retried original call
         return httpx.Response(

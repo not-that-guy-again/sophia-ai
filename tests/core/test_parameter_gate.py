@@ -3,10 +3,7 @@
 import pytest
 
 from sophia.core.parameter_gate import (
-    CORE_PLACEHOLDERS,
-    GateResult,
     ParameterGate,
-    ParameterValidation,
 )
 from sophia.core.proposer import CandidateAction, Proposal
 from sophia.core.input_gate import Intent

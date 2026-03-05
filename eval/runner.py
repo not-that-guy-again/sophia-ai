@@ -32,9 +32,7 @@ from eval.report import write_reports, generate_markdown
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Sophia adversarial evaluation suite"
-    )
+    parser = argparse.ArgumentParser(description="Sophia adversarial evaluation suite")
     parser.add_argument(
         "--tier",
         type=int,
@@ -74,9 +72,11 @@ async def main() -> int:
         return 1
 
     print("\n" + "─" * 60)
-    print(f"COMPLETE  {run.scenarios_passed}/{run.total_scenarios} scenarios passed  "
-          f"({run.turns_passed}/{run.total_turns} turns)  "
-          f"{run.duration_seconds}s")
+    print(
+        f"COMPLETE  {run.scenarios_passed}/{run.total_scenarios} scenarios passed  "
+        f"({run.turns_passed}/{run.total_turns} turns)  "
+        f"{run.duration_seconds}s"
+    )
     print("─" * 60)
 
     if args.no_save:

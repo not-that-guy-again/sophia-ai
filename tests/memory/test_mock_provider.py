@@ -80,10 +80,12 @@ async def test_recall_similar_returns_most_recent(memory):
 @pytest.mark.asyncio
 async def test_recall_respects_limit(memory):
     for i in range(10):
-        await memory.store_episode(Episode(
-            summary=f"Conversation {i}",
-            entities_referenced=["Abbie"],
-        ))
+        await memory.store_episode(
+            Episode(
+                summary=f"Conversation {i}",
+                entities_referenced=["Abbie"],
+            )
+        )
 
     results = await memory.recall_by_entity("person", "Abbie", limit=3)
     assert len(results) == 3
@@ -127,11 +129,13 @@ async def test_search_entities_by_name(memory):
 
 @pytest.mark.asyncio
 async def test_search_entities_by_attribute(memory):
-    await memory.store_entity(Entity(
-        entity_type="person",
-        name="Abbie",
-        attributes={"email": "abbie@example.com"},
-    ))
+    await memory.store_entity(
+        Entity(
+            entity_type="person",
+            name="Abbie",
+            attributes={"email": "abbie@example.com"},
+        )
+    )
 
     results = await memory.search_entities("abbie@example.com")
     assert len(results) == 1
@@ -175,12 +179,20 @@ async def test_get_relationships_filtered_by_type(memory):
     ent2_id = await memory.store_entity(Entity(entity_type="product", name="Litter Robot"))
     ent3_id = await memory.store_entity(Entity(entity_type="issue", name="Motor defect"))
 
-    await memory.store_relationship(Relationship(
-        from_entity=ent1_id, relation="purchased", to_entity=ent2_id,
-    ))
-    await memory.store_relationship(Relationship(
-        from_entity=ent1_id, relation="reported_issue", to_entity=ent3_id,
-    ))
+    await memory.store_relationship(
+        Relationship(
+            from_entity=ent1_id,
+            relation="purchased",
+            to_entity=ent2_id,
+        )
+    )
+    await memory.store_relationship(
+        Relationship(
+            from_entity=ent1_id,
+            relation="reported_issue",
+            to_entity=ent3_id,
+        )
+    )
 
     purchased = await memory.get_relationships(ent1_id, relation_type="purchased")
     assert len(purchased) == 1
@@ -214,11 +226,13 @@ async def test_memory_persists_across_hat_context():
     )
     await memory.store_episode(ep)
 
-    await memory.store_entity(Entity(
-        entity_type="person",
-        name="Abbie",
-        attributes={"issue": "motor defect"},
-    ))
+    await memory.store_entity(
+        Entity(
+            entity_type="person",
+            name="Abbie",
+            attributes={"issue": "motor defect"},
+        )
+    )
 
     # Recall without any hat context — memory is not hat-scoped
     results = await memory.recall_by_entity("person", "Abbie")

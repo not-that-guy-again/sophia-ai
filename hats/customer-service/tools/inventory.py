@@ -30,9 +30,7 @@ class CheckCurrentInventoryTool(Tool):
         stocks = await self.inventory_service.check_stock(product_id)
 
         if product_id and not stocks:
-            return ToolResult(
-                success=False, data=None, message=f"Product {product_id} not found"
-            )
+            return ToolResult(success=False, data=None, message=f"Product {product_id} not found")
 
         products = [asdict(s) for s in stocks]
         if product_id:

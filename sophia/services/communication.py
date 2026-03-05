@@ -33,7 +33,6 @@ class CommunicationResult:
 
 
 class CommunicationService(ABC):
-
     @abstractmethod
     async def send_to_role(
         self,

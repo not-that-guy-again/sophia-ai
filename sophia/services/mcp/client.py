@@ -105,9 +105,7 @@ class MCPClient:
                 response.raise_for_status()
                 data = response.json()
             except httpx.TimeoutException as exc:
-                last_exc = MCPTimeoutError(
-                    f"Timeout calling {method} on {self.server_name}"
-                )
+                last_exc = MCPTimeoutError(f"Timeout calling {method} on {self.server_name}")
                 last_exc.__cause__ = exc
                 self._connected = False
                 continue
@@ -132,11 +130,15 @@ class MCPClient:
     async def connect(self) -> MCPServerInfo:
         """Connect to the MCP server and discover available tools."""
         try:
-            init_result = await self._send_jsonrpc("initialize", {
-                "protocolVersion": _CLIENT_PROTOCOL_VERSION,
-                "capabilities": {},
-                "clientInfo": {"name": "sophia", "version": "0.1.0"},
-            }, _reconnect=False)
+            init_result = await self._send_jsonrpc(
+                "initialize",
+                {
+                    "protocolVersion": _CLIENT_PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "sophia", "version": "0.1.0"},
+                },
+                _reconnect=False,
+            )
         except (MCPConnectionError, MCPTimeoutError):
             raise
         except Exception as exc:
@@ -189,10 +191,13 @@ class MCPClient:
                 f"Available tools: {sorted(self._tools.keys())}"
             )
 
-        result = await self._send_jsonrpc("tools/call", {
-            "name": tool_name,
-            "arguments": arguments,
-        })
+        result = await self._send_jsonrpc(
+            "tools/call",
+            {
+                "name": tool_name,
+                "arguments": arguments,
+            },
+        )
 
         content = result.get("content", [])
         is_error = result.get("isError", False)

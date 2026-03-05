@@ -5,7 +5,9 @@ from sophia.tools.base import Tool, ToolResult
 
 class EscalateToHumanTool(Tool):
     name = "escalate_to_human"
-    description = "Escalate the conversation to a human agent when the request exceeds automated handling."
+    description = (
+        "Escalate the conversation to a human agent when the request exceeds automated handling."
+    )
     parameters = {
         "type": "object",
         "properties": {

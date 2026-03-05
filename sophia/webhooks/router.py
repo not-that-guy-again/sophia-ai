@@ -128,7 +128,10 @@ class EventRouter:
     async def _handle_memory_update(self, action: EventAction) -> None:
         """Convert event to Entity and store in memory."""
         if self.memory is None:
-            logger.warning("Memory provider not configured — skipping memory update for %s", action.event.entity_id)
+            logger.warning(
+                "Memory provider not configured — skipping memory update for %s",
+                action.event.entity_id,
+            )
             return
 
         entity_id = f"{action.event.source}:{action.event.entity_type}:{action.event.entity_id}"
@@ -152,19 +155,27 @@ class EventRouter:
     async def _handle_trigger_pipeline(self, action: EventAction) -> None:
         """Trigger the agent pipeline with a synthetic message."""
         if self.agent_loop is None:
-            logger.warning("Agent loop not configured — skipping pipeline trigger for %s", action.event.entity_id)
+            logger.warning(
+                "Agent loop not configured — skipping pipeline trigger for %s",
+                action.event.entity_id,
+            )
             return
 
-        message = action.synthetic_message or f"Webhook event: {action.event.event_type} for {action.event.entity_id}"
+        message = (
+            action.synthetic_message
+            or f"Webhook event: {action.event.event_type} for {action.event.entity_id}"
+        )
         try:
             result = await self.agent_loop.process(
                 message=message,
                 source="webhook",
-                metadata={"event": {
-                    "source": action.event.source,
-                    "event_type": action.event.event_type,
-                    "entity_id": action.event.entity_id,
-                }},
+                metadata={
+                    "event": {
+                        "source": action.event.source,
+                        "event_type": action.event.event_type,
+                        "entity_id": action.event.entity_id,
+                    }
+                },
             )
             logger.info(
                 "Pipeline triggered from webhook: tier=%s action=%s",

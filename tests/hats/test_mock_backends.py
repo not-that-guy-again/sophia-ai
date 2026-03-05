@@ -25,9 +25,7 @@ def test_order_customer_ids_match_real_customers():
 
 def test_shipment_order_ids_match_real_orders():
     for order_id in MockDataStore.shipments:
-        assert order_id in MockDataStore.orders, (
-            f"Shipment for unknown order {order_id}"
-        )
+        assert order_id in MockDataStore.orders, f"Shipment for unknown order {order_id}"
 
 
 def test_return_order_ids_match_real_orders():

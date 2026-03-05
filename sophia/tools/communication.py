@@ -59,9 +59,7 @@ class NotifyManagerTool(Tool):
             body=params.get("context_summary", ""),
             priority=params.get("priority", "medium"),
         )
-        result = await self._communication_service.send_to_role(
-            "manager", message
-        )
+        result = await self._communication_service.send_to_role("manager", message)
         return ToolResult(
             success=result.success,
             data={"channel": result.channel, "message_id": result.message_id},
@@ -72,8 +70,7 @@ class NotifyManagerTool(Tool):
 class RequestApprovalTool(Tool):
     name = "request_approval"
     description = (
-        "Request approval from a supervisor for an action that exceeds "
-        "the agent's authority level."
+        "Request approval from a supervisor for an action that exceeds the agent's authority level."
     )
     parameters = {
         "type": "object",
@@ -114,9 +111,7 @@ class RequestApprovalTool(Tool):
             ),
             priority="high",
         )
-        result = await self._communication_service.send_to_role(
-            "supervisor", message
-        )
+        result = await self._communication_service.send_to_role("supervisor", message)
         return ToolResult(
             success=result.success,
             data={"channel": result.channel, "message_id": result.message_id},
@@ -127,8 +122,7 @@ class RequestApprovalTool(Tool):
 class EscalateToHumanTool(Tool):
     name = "escalate_to_human"
     description = (
-        "Escalate the conversation to a human agent when the request "
-        "exceeds automated handling."
+        "Escalate the conversation to a human agent when the request exceeds automated handling."
     )
     parameters = {
         "type": "object",
@@ -169,9 +163,8 @@ class EscalateToHumanTool(Tool):
         notification_sent = False
 
         # Attempt notification if service is available and not mock
-        if (
-            self._communication_service
-            and not isinstance(self._communication_service, MockCommunicationService)
+        if self._communication_service and not isinstance(
+            self._communication_service, MockCommunicationService
         ):
             message = CommunicationMessage(
                 subject=f"Escalation: {params['reason']}",
@@ -179,9 +172,7 @@ class EscalateToHumanTool(Tool):
                 priority=priority,
                 source_ticket=ticket_id,
             )
-            result = await self._communication_service.send_to_role(
-                "manager", message
-            )
+            result = await self._communication_service.send_to_role("manager", message)
             notification_sent = result.success
 
         return ToolResult(

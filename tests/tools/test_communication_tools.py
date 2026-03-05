@@ -22,15 +22,11 @@ def _real_service(send_result=None):
         slack_client=None,
         gmail_client=None,
         policy={
-            "manager": CommunicationContact(
-                role="manager", channel="slack", address="#test"
-            ),
+            "manager": CommunicationContact(role="manager", channel="slack", address="#test"),
         },
     )
     if send_result is None:
-        send_result = CommunicationResult(
-            success=True, channel="slack", message_id="ts-123"
-        )
+        send_result = CommunicationResult(success=True, channel="slack", message_id="ts-123")
     service.send_to_role = AsyncMock(return_value=send_result)
     return service
 
@@ -40,11 +36,13 @@ async def test_notify_manager_sends_to_manager_role():
     tool = NotifyManagerTool()
     tool.inject_communication(service)
 
-    result = await tool.execute({
-        "reason": "Customer upset",
-        "priority": "high",
-        "context_summary": "Details here",
-    })
+    result = await tool.execute(
+        {
+            "reason": "Customer upset",
+            "priority": "high",
+            "context_summary": "Details here",
+        }
+    )
 
     assert result.success is True
     assert result.data["channel"] == "mock"
@@ -56,11 +54,13 @@ async def test_notify_manager_sends_to_manager_role():
 
 async def test_notify_manager_no_service():
     tool = NotifyManagerTool()
-    result = await tool.execute({
-        "reason": "test",
-        "priority": "low",
-        "context_summary": "test",
-    })
+    result = await tool.execute(
+        {
+            "reason": "test",
+            "priority": "low",
+            "context_summary": "test",
+        }
+    )
     assert result.success is False
     assert "not configured" in result.message
 
@@ -70,11 +70,13 @@ async def test_request_approval_sends_to_supervisor():
     tool = RequestApprovalTool()
     tool.inject_communication(service)
 
-    result = await tool.execute({
-        "action_description": "Refund $500",
-        "risk_level": "high",
-        "recommended_action": "Approve refund",
-    })
+    result = await tool.execute(
+        {
+            "action_description": "Refund $500",
+            "risk_level": "high",
+            "recommended_action": "Approve refund",
+        }
+    )
 
     assert result.success is True
     assert len(service._sent) == 1
@@ -87,11 +89,13 @@ async def test_escalate_returns_success_with_mock_notification_false():
     tool = EscalateToHumanTool()
     tool.inject_communication(service)
 
-    result = await tool.execute({
-        "reason": "Customer wants manager",
-        "priority": "high",
-        "context_summary": "Escalation needed",
-    })
+    result = await tool.execute(
+        {
+            "reason": "Customer wants manager",
+            "priority": "high",
+            "context_summary": "Escalation needed",
+        }
+    )
 
     assert result.success is True
     assert result.data["notification_sent"] is False
@@ -103,11 +107,13 @@ async def test_escalate_returns_success_with_real_notification_true():
     tool = EscalateToHumanTool()
     tool.inject_communication(service)
 
-    result = await tool.execute({
-        "reason": "Customer wants manager",
-        "priority": "urgent",
-        "context_summary": "Escalation needed",
-    })
+    result = await tool.execute(
+        {
+            "reason": "Customer wants manager",
+            "priority": "urgent",
+            "context_summary": "Escalation needed",
+        }
+    )
 
     assert result.success is True
     assert result.data["notification_sent"] is True
@@ -123,11 +129,13 @@ async def test_escalate_success_even_when_notification_fails():
     tool = EscalateToHumanTool()
     tool.inject_communication(service)
 
-    result = await tool.execute({
-        "reason": "test",
-        "priority": "medium",
-        "context_summary": "test",
-    })
+    result = await tool.execute(
+        {
+            "reason": "test",
+            "priority": "medium",
+            "context_summary": "test",
+        }
+    )
 
     assert result.success is True
     assert result.data["notification_sent"] is False
@@ -135,11 +143,13 @@ async def test_escalate_success_even_when_notification_fails():
 
 async def test_escalate_no_service():
     tool = EscalateToHumanTool()
-    result = await tool.execute({
-        "reason": "test",
-        "priority": "low",
-        "context_summary": "test",
-    })
+    result = await tool.execute(
+        {
+            "reason": "test",
+            "priority": "low",
+            "context_summary": "test",
+        }
+    )
     assert result.success is True
     assert result.data["notification_sent"] is False
     assert "ticket_id" in result.data

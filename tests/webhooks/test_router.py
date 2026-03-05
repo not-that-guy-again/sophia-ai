@@ -162,9 +162,7 @@ async def test_execute_no_memory_logs_warning(caplog):
 async def test_execute_no_agent_loop_logs_warning(caplog):
     router = EventRouter({"shopify": {"events": {}}})
     event = _make_event()
-    action = EventAction(
-        EventAction.TRIGGER_PIPELINE, event, synthetic_message="test"
-    )
+    action = EventAction(EventAction.TRIGGER_PIPELINE, event, synthetic_message="test")
 
     with caplog.at_level(logging.WARNING):
         await router.execute(action)
@@ -178,9 +176,7 @@ async def test_execute_no_agent_loop_logs_warning(caplog):
 @pytest.mark.asyncio
 async def test_execute_notify_sends_notification():
     mock_notif = AsyncMock()
-    mock_notif.send_notification.return_value = AsyncMock(
-        success=True, channel="log"
-    )
+    mock_notif.send_notification.return_value = AsyncMock(success=True, channel="log")
 
     router = EventRouter(
         {"shopify": {"events": {}}},
@@ -211,10 +207,12 @@ async def test_execute_notify_gate_blocks():
     mock_notif = AsyncMock()
 
     router = EventRouter(
-        {"shopify": {
-            "events": {},
-            "notification_limits": {"max_daily_per_customer": 1},
-        }},
+        {
+            "shopify": {
+                "events": {},
+                "notification_limits": {"max_daily_per_customer": 1},
+            }
+        },
         notification_service=mock_notif,
     )
     event = _make_event(entity_id="CUST-1")

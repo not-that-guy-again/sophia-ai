@@ -111,6 +111,7 @@ def test_rate_limiter_exceeded(client):
     with patch("sophia.auth.middleware.lookup_key", new_callable=AsyncMock, return_value=record):
         # Reset the rate limiter
         from sophia.auth import middleware
+
         middleware._rate_limiter._windows.clear()
 
         client.get("/protected", headers={"Authorization": "Bearer sk-sophia-test-abc123"})

@@ -35,14 +35,15 @@ class OfferDiscountTool(Tool):
 
     async def execute(self, params: dict) -> ToolResult:
         result = await self.compensation_service.apply_discount(
-            params["customer_id"], params["discount_percent"], params["reason"],
+            params["customer_id"],
+            params["discount_percent"],
+            params["reason"],
         )
         return ToolResult(
             success=True,
             data=asdict(result),
             message=(
-                f"Generated {result.percent}% discount code for customer "
-                f"{params['customer_id']}"
+                f"Generated {result.percent}% discount code for customer {params['customer_id']}"
             ),
         )
 
@@ -76,7 +77,9 @@ class OfferFreeShippingTool(Tool):
 
     async def execute(self, params: dict) -> ToolResult:
         result = await self.compensation_service.apply_free_shipping(
-            params["customer_id"], params.get("order_id"), params["reason"],
+            params["customer_id"],
+            params.get("order_id"),
+            params["reason"],
         )
         return ToolResult(
             success=True,
@@ -117,14 +120,15 @@ class OfferPartialRefundTool(Tool):
 
     async def execute(self, params: dict) -> ToolResult:
         result = await self.compensation_service.process_partial_refund(
-            params["order_id"], params["amount"], params["reason"],
+            params["order_id"],
+            params["amount"],
+            params["reason"],
         )
         return ToolResult(
             success=True,
             data=asdict(result),
             message=(
-                f"Partial refund of ${result.amount:.2f} issued for order "
-                f"{params['order_id']}"
+                f"Partial refund of ${result.amount:.2f} issued for order {params['order_id']}"
             ),
         )
 
@@ -157,7 +161,8 @@ class OfferFullRefundTool(Tool):
 
     async def execute(self, params: dict) -> ToolResult:
         result = await self.compensation_service.process_full_refund(
-            params["order_id"], params["reason"],
+            params["order_id"],
+            params["reason"],
         )
         return ToolResult(
             success=True,
@@ -200,19 +205,23 @@ class SendReplacementProductTool(Tool):
         product = await self.inventory_service.get_product_details(params["product_id"])
         if not product:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=f"Product {params['product_id']} not found",
             )
 
-        items = [OrderItem(
-            product_id=product.product_id,
-            name=product.name,
-            quantity=1,
-            unit_price=0.0,
-            total_price=0.0,
-        )]
+        items = [
+            OrderItem(
+                product_id=product.product_id,
+                name=product.name,
+                quantity=1,
+                unit_price=0.0,
+                total_price=0.0,
+            )
+        ]
         order = await self.order_service.place_order(
-            params.get("customer_id", "REPLACEMENT"), items,
+            params.get("customer_id", "REPLACEMENT"),
+            items,
         )
         return ToolResult(
             success=True,

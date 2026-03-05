@@ -9,25 +9,35 @@ from tests.conftest import MockLLMProvider
 
 
 @pytest.mark.asyncio
-async def test_proposer_generates_candidates(mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig):
-    mock_llm.set_responses([
-        json.dumps({
-            "candidates": [
+async def test_proposer_generates_candidates(
+    mock_llm: MockLLMProvider, tool_registry, cs_hat_config: HatConfig
+):
+    mock_llm.set_responses(
+        [
+            json.dumps(
                 {
-                    "tool_name": "offer_full_refund",
-                    "parameters": {"order_id": "ORD-12345", "reason": "damaged product"},
-                    "reasoning": "Customer received a damaged product, full refund is appropriate.",
-                    "expected_outcome": "Customer receives full refund and is satisfied.",
-                },
-                {
-                    "tool_name": "send_replacement_product",
-                    "parameters": {"order_id": "ORD-12345", "product_id": "PROD-001", "reason": "damaged"},
-                    "reasoning": "Alternative: send a replacement instead of refund.",
-                    "expected_outcome": "Customer receives working product.",
-                },
-            ]
-        })
-    ])
+                    "candidates": [
+                        {
+                            "tool_name": "offer_full_refund",
+                            "parameters": {"order_id": "ORD-12345", "reason": "damaged product"},
+                            "reasoning": "Customer received a damaged product, full refund is appropriate.",
+                            "expected_outcome": "Customer receives full refund and is satisfied.",
+                        },
+                        {
+                            "tool_name": "send_replacement_product",
+                            "parameters": {
+                                "order_id": "ORD-12345",
+                                "product_id": "PROD-001",
+                                "reason": "damaged",
+                            },
+                            "reasoning": "Alternative: send a replacement instead of refund.",
+                            "expected_outcome": "Customer receives working product.",
+                        },
+                    ]
+                }
+            )
+        ]
+    )
 
     proposer = Proposer(
         llm=mock_llm,

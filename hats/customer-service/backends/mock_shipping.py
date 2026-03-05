@@ -42,9 +42,7 @@ class MockShippingService(ShippingService):
 
         order.shipping_address = new_address
         order.updated_at = datetime.now()
-        return AddressUpdateResult(
-            order_id=order_id, success=True, new_address=new_address
-        )
+        return AddressUpdateResult(order_id=order_id, success=True, new_address=new_address)
 
     async def generate_return_label(self, order_id: str, reason: str) -> ReturnLabel:
         order = MockDataStore.orders.get(order_id)

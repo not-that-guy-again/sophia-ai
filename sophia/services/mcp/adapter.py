@@ -28,9 +28,7 @@ class MCPServiceAdapter:
         """Generic method to call an MCP tool via the mapping."""
         config = self.mapping.get(method_name)
         if not config:
-            raise NotImplementedError(
-                f"Method '{method_name}' has no MCP tool mapping"
-            )
+            raise NotImplementedError(f"Method '{method_name}' has no MCP tool mapping")
         args = config["build_args"](**kwargs)
         result = await self.client.call_tool(config["tool_name"], args)
         if result.is_error:
