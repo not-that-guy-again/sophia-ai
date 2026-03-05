@@ -44,15 +44,20 @@ class LLMProvider(ABC):
         """
 
 
-def get_provider(config) -> LLMProvider:
-    """Factory function to create the appropriate LLM provider."""
+def get_provider(config, model_override: str | None = None) -> LLMProvider:
+    """Factory function to create the appropriate LLM provider.
+
+    Args:
+        config: Settings instance.
+        model_override: If provided, use this model instead of config.llm_model.
+    """
     if config.llm_provider == "anthropic":
         from sophia.llm.anthropic import AnthropicProvider
 
-        return AnthropicProvider(config)
+        return AnthropicProvider(config, model_override=model_override)
     elif config.llm_provider == "ollama":
         from sophia.llm.ollama import OllamaProvider
 
-        return OllamaProvider(config)
+        return OllamaProvider(config, model_override=model_override)
     else:
         raise ValueError(f"Unknown LLM provider: {config.llm_provider}")

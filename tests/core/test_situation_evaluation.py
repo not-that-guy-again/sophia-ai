@@ -124,8 +124,13 @@ def test_should_run_situation_evaluation_false_for_general_inquiry():
     assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is False
 
 
-def test_should_run_situation_evaluation_false_for_synthesized_converse():
-    """When gate synthesized converse (promoted_converse=True), should NOT evaluate."""
+def test_should_run_situation_evaluation_true_for_synthesized_converse():
+    """When gate synthesized converse (promoted_converse=True), should still evaluate.
+
+    ADR-032 amendment: promoted_converse no longer suppresses situation evaluation.
+    A policy-constrained request with missing parameters should still receive
+    formal risk evaluation.
+    """
     intent = Intent(action_requested="refund", target=None, raw_message="Refund please")
     candidate = CandidateAction(tool_name="converse", parameters={}, reasoning="missing info")
     gate_result = GateResult(
@@ -135,7 +140,21 @@ def test_should_run_situation_evaluation_false_for_synthesized_converse():
     )
 
     loop = AgentLoop.__new__(AgentLoop)
-    assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is False
+    assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is True
+
+
+def test_promoted_converse_with_non_general_inquiry_runs_situation_eval():
+    """promoted_converse=True with action_requested='discount' -> returns True."""
+    intent = Intent(action_requested="discount", target=None, raw_message="Give me a discount")
+    candidate = CandidateAction(tool_name="converse", parameters={}, reasoning="missing info")
+    gate_result = GateResult(
+        original_candidates=[],
+        surviving_candidates=[candidate],
+        promoted_converse=True,
+    )
+
+    loop = AgentLoop.__new__(AgentLoop)
+    assert loop._should_run_situation_evaluation(intent, candidate, gate_result) is True
 
 
 def test_should_run_situation_evaluation_true_for_escalate_to_human():

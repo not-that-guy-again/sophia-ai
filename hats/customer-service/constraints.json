@@ -29,7 +29,9 @@
     "intercept package",
     "illegal remove discount",
     "direct instruction from management",
-    "I am authorizing this"
+    "I am authorizing this",
+    "send free",
+    "give free"
   ],
   "hard_rules": [
     "Never give away products for free",

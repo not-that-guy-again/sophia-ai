@@ -188,10 +188,18 @@ Settings are loaded from environment variables (`.env` file) via Pydantic `BaseS
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `LLM_PROVIDER` | `anthropic` | `anthropic` or `ollama` |
 | `LLM_MODEL` | `claude-sonnet-4-6` | Model for chosen provider |
+| `LLM_MODEL_INPUT_GATE` | *(uses `LLM_MODEL`)* | Model for the input gate stage |
+| `LLM_MODEL_PROPOSER` | *(uses `LLM_MODEL`)* | Model for the proposer stage |
+| `LLM_MODEL_CONSEQUENCE` | *(uses `LLM_MODEL`)* | Model for consequence tree generation |
+| `LLM_MODEL_EVALUATORS` | *(uses `LLM_MODEL`)* | Model for all four evaluators |
+| `LLM_MODEL_RESPONSE_GEN` | *(uses `LLM_MODEL`)* | Model for response generation |
+| `LLM_MODEL_MEMORY` | *(uses `LLM_MODEL`)* | Model for memory extraction |
 | `DEFAULT_HAT` | `customer-service` | Hat to equip on startup |
 | `HATS_DIR` | `./hats` | Directory to scan for hats |
 | `DATABASE_URL` | `sqlite+aiosqlite:///sophia.db` | Database connection |
 | `LOG_LEVEL` | `INFO` | Logging level |
+
+All per-stage model variables are optional. Unset variables fall back to `LLM_MODEL`. Changing any per-stage model requires re-equipping the hat or restarting the server to take effect.
 
 Evaluator weights, risk thresholds, and domain constraints are all configured per-hat, not globally.
 

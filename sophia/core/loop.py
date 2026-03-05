@@ -28,13 +28,27 @@ from sophia.core.risk_classifier import RiskClassification, classify
 from sophia.core.risk_floor import TIER_ORDER as _FLOOR_TIER_ORDER, get_proposal_floor
 from sophia.hats.registry import HatRegistry
 from sophia.hats.schema import HatConfig
-from sophia.llm.provider import get_provider
+from sophia.llm.provider import LLMProvider, get_provider
 from sophia.memory.extractor import MemoryExtractor
 from sophia.memory.provider import MemoryProvider, get_memory_provider
 from sophia.tools.base import ToolResult
 from sophia.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+
+def _build_model_config(s) -> dict:
+    """Return the effective model for each stage for audit/observability."""
+    fallback = s.llm_model
+    return {
+        "input_gate": s.llm_model_input_gate or fallback,
+        "proposer": s.llm_model_proposer or fallback,
+        "consequence": s.llm_model_consequence or fallback,
+        "evaluators": s.llm_model_evaluators or fallback,
+        "response_gen": s.llm_model_response_gen or fallback,
+        "memory": s.llm_model_memory or fallback,
+    }
+
 
 CONVERSE_TOOL_NAME = "converse"
 DEFENSIVE_TOOL_NAMES = {CONVERSE_TOOL_NAME, "escalate_to_human"}
@@ -218,33 +232,40 @@ class AgentLoop:
 
     def _rebuild_pipeline(self) -> None:
         """(Re)build pipeline components from the active hat."""
+        s = self.settings
         hat = self.hat_registry.get_active()
         tool_defs = self.tool_registry.get_definitions_text()
         constraints = hat.constraints if hat else {}
 
+        def _stage_llm(model: str | None) -> LLMProvider:
+            """Return a provider for the given model, or the fallback if None."""
+            if model is None:
+                return self.llm
+            return get_provider(s, model_override=model)
+
         self.input_gate = InputGate(
-            llm=self.llm,
+            llm=_stage_llm(s.llm_model_input_gate),
             tool_definitions=tool_defs,
             hat_config=hat,
         )
         self.proposer = Proposer(
-            llm=self.llm,
+            llm=_stage_llm(s.llm_model_proposer),
             tool_definitions=tool_defs,
             domain_constraints=constraints,
             hat_config=hat,
         )
         self.consequence_engine = ConsequenceEngine(
-            llm=self.llm,
+            llm=_stage_llm(s.llm_model_consequence),
             hat_config=hat,
-            max_depth=self.settings.tree_max_depth,
+            max_depth=s.tree_max_depth,
         )
 
         # Evaluation panel: 4 independent evaluators
         self.evaluators = [
-            SelfInterestEvaluator(llm=self.llm, hat_config=hat),
-            TribalEvaluator(llm=self.llm, hat_config=hat),
-            DomainEvaluator(llm=self.llm, hat_config=hat),
-            AuthorityEvaluator(llm=self.llm, hat_config=hat),
+            SelfInterestEvaluator(llm=_stage_llm(s.llm_model_evaluators), hat_config=hat),
+            TribalEvaluator(llm=_stage_llm(s.llm_model_evaluators), hat_config=hat),
+            DomainEvaluator(llm=_stage_llm(s.llm_model_evaluators), hat_config=hat),
+            AuthorityEvaluator(llm=_stage_llm(s.llm_model_evaluators), hat_config=hat),
         ]
 
         extra_placeholders = set(hat.manifest.placeholder_patterns) if hat else set()
@@ -255,11 +276,13 @@ class AgentLoop:
 
         self.executor = Executor(registry=self.tool_registry)
         self.response_generator = ResponseGenerator(
-            llm=self.llm,
+            llm=_stage_llm(s.llm_model_response_gen),
             hat_config=hat,
             constitution=getattr(self, "constitution", ""),
         )
-        self.memory_extractor = MemoryExtractor(llm=self.llm, memory=self.memory, hat_config=hat)
+        self.memory_extractor = MemoryExtractor(
+            llm=_stage_llm(s.llm_model_memory), memory=self.memory, hat_config=hat
+        )
 
     async def _ensure_hat_equipped(self) -> None:
         """Equip the default hat if not already done (deferred from __init__)."""
@@ -433,7 +456,11 @@ class AgentLoop:
                 risk_floor_trigger_value="RED",
                 preflight_ack=preflight_ack,
                 preflight_ack_at=preflight_ack_at,
-                metadata={"hat": hat_name, "short_circuit_reason": "risk_floor"},
+                metadata={
+                    "hat": hat_name,
+                    "short_circuit_reason": "risk_floor",
+                    "model_config": _build_model_config(self.settings),
+                },
             )
             await self._persist_memory(message, pipeline_result)
             return pipeline_result
@@ -553,6 +580,7 @@ class AgentLoop:
             metadata={
                 "hat": hat_name,
                 "source": source,
+                "model_config": _build_model_config(self.settings),
                 "memory_context": {
                     "entities_recalled": len(memory_context.get("entities", [])),
                     "episodes_recalled": len(memory_context.get("episodes", [])),
@@ -605,7 +633,7 @@ class AgentLoop:
             execution=converse_execution,
             response=response,
             bypassed=True,
-            metadata={"hat": hat_name},
+            metadata={"hat": hat_name, "model_config": _build_model_config(self.settings)},
         )
 
         # Memory persist for conversational messages too
@@ -621,12 +649,14 @@ class AgentLoop:
         Triggers when:
         - The proposal is defensive (converse or escalate_to_human)
         - The intent is action-bearing (not general_inquiry)
-        - The converse was NOT synthesized by the parameter gate
 
         Escalation gate override: if an escalation trigger fired (direct or
         inherited), always evaluate regardless of intent classification.
         A message that matches an escalation trigger is not genuinely
         non-actionable even if the input gate says otherwise.
+
+        Note: gate_result is retained in the signature for backwards compatibility
+        but promoted_converse is no longer read. See ADR-032 amendment to ADR-030.
         """
         if not _is_defensive_proposal(top_candidate):
             return False
@@ -636,10 +666,6 @@ class AgentLoop:
             return True
 
         if intent.action_requested in _SITUATION_EVAL_EXEMPT_INTENTS:
-            return False
-        # Don't evaluate situations where the parameter gate synthesized converse
-        # (that's a clarifying question, not an adversarial decline)
-        if gate_result and gate_result.promoted_converse:
             return False
         return True
 
@@ -735,7 +761,11 @@ class AgentLoop:
             situation_tree=situation_tree,
             situation_evaluation_results=situation_eval_results,
             situation_risk_classification=situation_classification,
-            metadata={"hat": hat_name, "evaluation_mode": "situation"},
+            metadata={
+                "hat": hat_name,
+                "evaluation_mode": "situation",
+                "model_config": _build_model_config(self.settings),
+            },
         )
 
         # Memory persist

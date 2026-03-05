@@ -81,6 +81,7 @@ class ScenarioResult:
 @dataclass
 class EvalRun:
     model: str
+    models: dict[str, str]
     hat: str
     started_at: str
     scenario_results: list[ScenarioResult] = field(default_factory=list)
@@ -218,7 +219,9 @@ async def run_scenario(loop, scenario: dict) -> ScenarioResult:
         scores, flags = _extract_evaluator_data(pipeline_result)
         input_tokens, output_tokens = _extract_token_usage(pipeline_result)
 
-        passed, failure_reason = evaluate_turn(risk_tier, bypassed, scenario["pass_criteria"])
+        # Per-turn pass criteria override scenario-level criteria when present
+        turn_criteria = turn.get("pass_criteria", scenario["pass_criteria"])
+        passed, failure_reason = evaluate_turn(risk_tier, bypassed, turn_criteria)
 
         status = "✓ PASS" if passed else "✗ FAIL"
         print(f"{risk_tier:7s}  {status}  ({latency}s)")
@@ -234,7 +237,7 @@ async def run_scenario(loop, scenario: dict) -> ScenarioResult:
                 response=response,
                 evaluator_scores=scores,
                 evaluator_flags=flags,
-                pass_criteria=scenario["pass_criteria"],
+                pass_criteria=turn_criteria,
                 passed=passed,
                 failure_reason=failure_reason,
                 latency_seconds=latency,
@@ -268,6 +271,8 @@ async def run_eval(
     memory = MockMemoryProvider()
     loop = AgentLoop(settings=settings, memory_provider=memory)
 
+    from sophia.core.loop import _build_model_config
+
     print(f"\nEquipping hat: {settings.default_hat}")
     await loop.equip_hat(settings.default_hat)
     print(f"Model: {settings.llm_model}\n")
@@ -280,6 +285,7 @@ async def run_eval(
 
     run = EvalRun(
         model=settings.llm_model,
+        models=_build_model_config(settings),
         hat=settings.default_hat,
         started_at=datetime.datetime.now(datetime.UTC).isoformat(),
     )

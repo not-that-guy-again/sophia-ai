@@ -8,6 +8,14 @@ class Settings(BaseSettings):
     llm_provider: str = "anthropic"  # "anthropic" or "ollama"
     llm_model: str = "claude-sonnet-4-6"
 
+    # Per-stage model overrides (ADR-032) — all optional, fall back to llm_model
+    llm_model_input_gate: str | None = None
+    llm_model_proposer: str | None = None
+    llm_model_consequence: str | None = None
+    llm_model_evaluators: str | None = None
+    llm_model_response_gen: str | None = None
+    llm_model_memory: str | None = None
+
     # Database
     database_url: str = "sqlite+aiosqlite:///sophia.db"
 

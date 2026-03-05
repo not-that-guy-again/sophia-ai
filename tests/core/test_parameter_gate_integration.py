@@ -1,9 +1,12 @@
-"""Integration test: parameter gate short-circuits the pipeline (ADR-019).
+"""Integration test: parameter gate catches placeholders (ADR-019).
 
 Mirrors the exact scenario from the 2026-03-03 audit: customer asks about an
 order without providing an order number. The proposer generates
 check_order_status(order_id="UNKNOWN") as candidate #1 and converse as #2.
-The gate catches the placeholder before any LLM calls are wasted.
+The gate catches the placeholder and promotes converse.
+
+After ADR-032 amendment: promoted converse on a non-general_inquiry intent
+triggers situation evaluation instead of bypass.
 """
 
 import json
@@ -15,12 +18,74 @@ from sophia.memory.mock import MockMemoryProvider
 from tests.conftest import MockLLMProvider
 
 
+# Shared helper for situation eval mock responses (order_status → GREEN)
+def _situation_eval_responses():
+    """Return mock responses for situation consequence tree + 4 evaluators."""
+    return [
+        # Situation consequence tree
+        json.dumps(
+            {
+                "consequences": [
+                    {
+                        "description": "Customer order status is checked",
+                        "stakeholders_affected": ["customer"],
+                        "probability": 0.95,
+                        "tangibility": 0.8,
+                        "harm_benefit": 0.3,
+                        "affected_party": "customer",
+                        "is_terminal": True,
+                        "children": [],
+                    }
+                ]
+            }
+        ),
+        # Four evaluators — all benign (order lookup is harmless)
+        json.dumps(
+            {
+                "score": 0.2,
+                "confidence": 0.8,
+                "flags": [],
+                "reasoning": "Order status check is routine",
+                "key_concerns": [],
+            }
+        ),
+        json.dumps(
+            {
+                "score": 0.2,
+                "confidence": 0.8,
+                "flags": [],
+                "reasoning": "No tribal harm",
+                "key_concerns": [],
+            }
+        ),
+        json.dumps(
+            {
+                "score": 0.2,
+                "confidence": 0.8,
+                "flags": [],
+                "reasoning": "Standard request",
+                "key_concerns": [],
+            }
+        ),
+        json.dumps(
+            {
+                "score": 0.2,
+                "confidence": 0.8,
+                "flags": [],
+                "reasoning": "Within authority",
+                "key_concerns": [],
+            }
+        ),
+    ]
+
+
 @pytest.mark.asyncio
 async def test_parameter_gate_shortcircuits_placeholder_order_id(
     mock_llm: MockLLMProvider, cs_hat_config
 ):
     """When proposer returns check_order_status(order_id='UNKNOWN') + converse,
-    the parameter gate promotes converse and bypasses the full pipeline."""
+    the parameter gate promotes converse. Since intent is order_status (not
+    general_inquiry), situation evaluation runs (ADR-032 amendment)."""
     mock_llm.set_responses(
         [
             # 1. Input gate
@@ -50,9 +115,11 @@ async def test_parameter_gate_shortcircuits_placeholder_order_id(
                     ]
                 }
             ),
-            # 3. Response generator (converse path) — asks for order number
+            # 3-7. Situation evaluation (consequence tree + 4 evaluators)
+            *_situation_eval_responses(),
+            # 8. Response generator (converse path with situation tier)
             "I'd be happy to help you check on your order! Could you please provide me with your order number so I can look that up for you?",
-            # 4. Memory extractor
+            # 9. Memory extractor
             json.dumps(
                 {
                     "episode": {
@@ -96,17 +163,16 @@ async def test_parameter_gate_shortcircuits_placeholder_order_id(
 
     result = await loop.process("Where is my order? It hasn't arrived yet.")
 
-    # Pipeline was bypassed — no consequence trees, no evaluations
-    assert result.bypassed is True
-    assert result.consequence_trees == []
-    assert result.evaluation_results == []
+    # Situation evaluation ran — not bypassed (ADR-032 amendment)
+    assert result.bypassed is False
+    assert result.situation_tree is not None
+    assert result.situation_risk_classification is not None
 
     # Response is conversational (asks for order number)
     assert "order" in result.response.lower()
 
     # Execution used converse
     assert result.execution.action_taken.tool_name == CONVERSE_TOOL_NAME
-    assert result.execution.risk_tier == "GREEN"
 
     # Metadata contains parameter gate results
     assert "parameter_gate" in result.metadata
@@ -123,9 +189,8 @@ async def test_parameter_gate_shortcircuits_placeholder_order_id(
     converse_validation = next(v for v in gate_data if v["tool_name"] == "converse")
     assert converse_validation["passed"] is True
 
-    # Only 4 LLM calls: input gate, proposer, response gen, memory extract
-    # NOT 8+ (which would include consequence trees + 4 evaluators)
-    assert len(mock_llm.calls) == 4
+    # 9 LLM calls: input gate, proposer, consequence tree, 4 evaluators, response gen, memory
+    assert len(mock_llm.calls) == 9
 
 
 @pytest.mark.asyncio
@@ -133,7 +198,7 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
     mock_llm: MockLLMProvider, cs_hat_config
 ):
     """When ALL candidates fail and no converse candidate exists,
-    the gate synthesizes one and the pipeline bypasses."""
+    the gate synthesizes one. Situation evaluation runs for non-general_inquiry."""
     mock_llm.set_responses(
         [
             # 1. Input gate
@@ -157,9 +222,11 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
                     ]
                 }
             ),
-            # 3. Response generator (converse path)
+            # 3-7. Situation evaluation (consequence tree + 4 evaluators)
+            *_situation_eval_responses(),
+            # 8. Response generator (converse path)
             "Could you please share your order number? I'll look into the status for you right away.",
-            # 4. Memory extractor
+            # 9. Memory extractor
             json.dumps(
                 {
                     "episode": {
@@ -203,9 +270,9 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
 
     result = await loop.process("What's my order status?")
 
-    assert result.bypassed is True
-    assert result.consequence_trees == []
-    assert result.evaluation_results == []
+    # Situation evaluation ran (ADR-032 amendment)
+    assert result.bypassed is False
+    assert result.situation_tree is not None
     assert result.execution.action_taken.tool_name == CONVERSE_TOOL_NAME
 
     # Gate metadata shows the failure
@@ -214,8 +281,8 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
     cos_validation = next(v for v in gate_data if v["tool_name"] == "check_order_status")
     assert cos_validation["passed"] is False
 
-    # Only 4 LLM calls
-    assert len(mock_llm.calls) == 4
+    # 9 LLM calls: input gate, proposer, consequence tree, 4 evaluators, response gen, memory
+    assert len(mock_llm.calls) == 9
 
 
 @pytest.mark.asyncio
