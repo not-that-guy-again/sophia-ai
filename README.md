@@ -53,49 +53,52 @@ User Message
 │  Proposer            │  Here are 1-3 candidate actions I could take.
 └──────────┬───────────┘  (NO execution yet. Just proposals.)
            │
-           ├─── just talking? ──────────────┐
-           │                                │
-           ▼                                ▼
-┌──────────────────────┐           ┌──────────────────┐
-│  Consequence Engine  │           │  Response Gen    │
-│  (branching outcomes │           │  (conversational │
-│   per candidate)     │           │   bypass)        │
-└──────────┬───────────┘           └───────┬──────────┘
-           │                               │
-           ▼                               │
-┌──────────────────────┐                   │
-│  Evaluation Panel    │                   │
-│  4 evaluators score  │                   │
-│  in parallel:        │                   │
-│  · Self-interest     │                   │
-│  · Tribal harm       │                   │
-│  · Domain rules      │                   │
-│  · Authority         │                   │
-└──────────┬───────────┘                   │
-           │                               │
-           ▼                               │
-┌──────────────────────┐                   │
-│  Risk Classifier     │                   │
-│  GREEN / YELLOW /    │                   │
-│  ORANGE / RED        │                   │
-└──────────┬───────────┘                   │
-           │                               │
-           ▼                               │
-┌──────────────────────┐                   │
-│  Executor            │                   │
-│  GREEN  → act        │                   │
-│  YELLOW → confirm    │                   │
-│  ORANGE → escalate   │                   │
-│  RED    → refuse     │                   │
-└──────────┬───────────┘                   │
-           │                               │
-           ▼                               │
-┌──────────────────────┐                   │
-│  Response Generator  │ ◄─────────────────┘
-│  (natural language)  │
-└──────────┬───────────┘
-           │
-           ▼
+           ├─── general inquiry ───────────────┐
+           │    (conversational bypass)        │
+           │                                   │
+           ▼                                   │
+┌──────────────────────┐                       │
+│  Consequence Engine  │  action → eval the    │
+│  (branching outcome  │    proposed tool      │
+│   trees)             │  converse → eval the  │
+│                      │    customer's request │
+│                      │    (situation eval)   │
+└──────────┬───────────┘                       │
+           │                                   │
+           ▼                                   │
+┌──────────────────────┐                       │
+│  Evaluation Panel    │                       │
+│  4 evaluators score  │                       │
+│  in parallel:        │                       │
+│  · Self-interest     │                       │
+│  · Tribal harm       │                       │
+│  · Domain rules      │                       │
+│  · Authority         │                       │
+└──────────┬───────────┘                       │
+           │                                   │
+           ▼                                   │
+┌──────────────────────┐                       │
+│  Risk Classifier     │                       │
+│  GREEN / YELLOW /    │                       │
+│  ORANGE / RED        │                       │
+└──────────┬───────────┘                       │
+           │                                   │
+           ├─── action path only ──┐           │
+           │                       ▼           │
+           │            ┌──────────────────┐   │
+           │            │  Executor        │   │
+           │            │  GREEN  → act    │   │
+           │            │  YELLOW → confirm│   │
+           │            │  ORANGE → escal. │   │
+           │            │  RED    → refuse │   │
+           │            └────────┬─────────┘   │
+           │                     │             │
+           ▼                     ▼             │
+┌──────────────────────────────────────────┐   │
+│  Response Generator (natural language)   │ ◄─┘
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
 ┌──────────────────────┐
 │  Memory Persist      │  Store what happened for next time.
 └──────────┬───────────┘
@@ -106,7 +109,13 @@ User Message
 └──────────────────────┘
 ```
 
-If the proposer decides the message is just conversation (a greeting, a clarifying question, small talk), it skips the consequence engine, evaluators, risk classifier, and executor entirely. No reason to score the consequences of saying "good morning." Memory still runs on both ends.
+There are three paths through the pipeline after the proposer:
+
+1. **Action proposals** go through the full pipeline: consequence engine, evaluation panel, risk classifier, executor.
+2. **Conversational responses to policy-constrained requests** (e.g., a customer asking for a discount, or an order lookup with missing info) still go through consequence analysis — the engine evaluates the *customer's request* even though the agent is just asking a clarifying question. This is **situation evaluation** (ADR-030), and it prevents social engineering attacks where a polite clarification masks a dangerous underlying request. The risk tier is passed to the response generator as context, but the executor is skipped (since the agent isn't taking an action).
+3. **General inquiries** (greetings, store hours, small talk) bypass the consequence engine entirely. No reason to score the consequences of saying "good morning."
+
+Memory and audit logging run on all three paths.
 
 ### The Evaluators
 
@@ -237,7 +246,7 @@ There are also generic REST and GraphQL adapters that let you connect any API th
 
 ### Key Design Decisions
 
-Sophia has 29 Architecture Decision Records documenting every significant choice. Here are the ones that matter most:
+Sophia has 33 Architecture Decision Records documenting every significant choice. Here are the ones that matter most:
 
 **Propose, then evaluate.** The LLM proposes actions. It does not execute them. Execution only happens after consequence analysis, evaluation, and risk classification. This is the foundational principle.
 
@@ -250,6 +259,12 @@ Sophia has 29 Architecture Decision Records documenting every significant choice
 **Three-system data architecture.** Hat configuration lives on disk (version-controlled). Memory lives in SurrealDB (document + graph + vector). Decision records live in the audit database (append-only, relational). No system stores data that belongs to another.
 
 **The provider pattern.** Every external dependency (LLM, memory, service backends) sits behind an abstract interface with a factory resolver. You can swap Anthropic for Ollama, SurrealDB for a mock, Shopify for a generic REST adapter, all without touching pipeline code.
+
+**Risk floors.** Tools can declare a minimum risk tier (ADR-031). If a tool says `"min_risk_tier": "ORANGE"`, the risk classifier will never classify an action using that tool below ORANGE, regardless of evaluator scores. This prevents the consequence engine from being "talked into" approving dangerous operations by a convincing enough justification.
+
+**Per-stage model routing.** Each pipeline stage can run on a different LLM model (ADR-032). The consequence engine might run on a large model while the response generator uses a smaller, faster one. This enables cost optimization without sacrificing safety on the stages that matter most.
+
+**Adversarial evaluation.** A structured eval suite with multi-turn social engineering scenarios validates the full pipeline end-to-end. Scenarios are organized by tier (direct attacks, multi-turn manipulation) with per-turn pass criteria. The current baseline is 6/6 scenarios, 18/18 turns on the default model configuration.
 
 ## Quickstart
 
@@ -307,7 +322,7 @@ The entire test suite runs with zero external dependencies. No API keys, no data
 | 6 | Memory System: three-tier memory with SurrealDB | ✅ Complete |
 | 7 | Pipeline Optimization: conversational bypass, parameter gate, preflight ack, constitution | ✅ Complete |
 | 8 | Service Layer: provider abstraction, REST/GraphQL/MCP adapters, Shopify mapping, webhooks, notifications, auth | ✅ Complete |
-| 9 | Safety Validation: situation evaluation (ADR-030), adversarial eval suite, baseline results (6/6 scenarios, 18/18 turns) | ✅ Complete |
+| 9 | Safety Validation: situation evaluation (ADR-030), risk floors (ADR-031), per-stage model routing (ADR-032), adversarial eval suite (6/6, 18/18) | ✅ Complete |
 | 10 | Production Deployment: live backend, real customer interactions, second Hat | 🔧 Not started |
 
 ## Documentation
@@ -315,7 +330,7 @@ The entire test suite runs with zero external dependencies. No API keys, no data
 - **[Architecture Reference](docs/ARCHITECTURE.md)** for the full technical deep-dive
 - **[Hat Specification](docs/HAT_SPEC.md)** for the formal Hat interface
 - **[Creating Hats](docs/CREATING_HATS.md)** if you want to build your own
-- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-030)
+- **[Architecture Decision Records](decisions/)** for every significant design choice (ADR-001 through ADR-033)
 - **[Contributing](docs/CONTRIBUTING.md)** for development guidelines
 
 ## License
