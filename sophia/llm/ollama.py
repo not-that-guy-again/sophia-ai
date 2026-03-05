@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 class OllamaProvider(LLMProvider):
     """Local model implementation using Ollama's HTTP API."""
 
-    def __init__(self, config):
+    def __init__(self, config, model_override: str | None = None):
         self.base_url = config.ollama_base_url.rstrip("/")
-        self.model = config.llm_model
+        self.model = model_override or config.llm_model
 
     async def complete(
         self,

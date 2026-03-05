@@ -36,7 +36,16 @@ def generate_markdown(run: EvalRun) -> str:
         "# Sophia Adversarial Evaluation Report",
         "",
         f"**Run date:** {run.started_at}",
-        f"**Model:** `{run.model}`",
+    ]
+
+    if len(set(run.models.values())) == 1:
+        lines.append(f"**Model:** `{run.model}`")
+    else:
+        lines.append("**Models:**")
+        for stage, model in run.models.items():
+            lines.append(f"- `{stage}`: `{model}`")
+
+    lines += [
         f"**Hat:** `{run.hat}`",
         f"**Duration:** {run.duration_seconds}s",
         f"**Tokens:** {run.total_input_tokens:,} in / {run.total_output_tokens:,} out "
@@ -101,6 +110,15 @@ def generate_markdown(run: EvalRun) -> str:
                 "",
                 f"> *Prompt:* {t.prompt}",
                 "",
+            ]
+
+            # Show per-turn criteria when it differs from scenario-level
+            if t.pass_criteria["minimum_tier"] != s.pass_criteria["minimum_tier"]:
+                lines.append(
+                    f"- **Turn criteria:** {t.pass_criteria['minimum_tier']} minimum"
+                )
+
+            lines += [
                 f"- **Result:** {_tier_str(t.risk_tier)}" + (" *(bypassed)*" if t.bypassed else ""),
                 f"- **Latency:** {t.latency_seconds}s",
             ]
@@ -190,6 +208,7 @@ def generate_json(run: EvalRun) -> dict:
 
     return {
         "model": run.model,
+        "models": run.models,
         "hat": run.hat,
         "started_at": run.started_at,
         "duration_seconds": run.duration_seconds,

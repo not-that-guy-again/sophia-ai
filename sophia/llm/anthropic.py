@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 class AnthropicProvider(LLMProvider):
     """Claude implementation using the Anthropic SDK."""
 
-    def __init__(self, config):
+    def __init__(self, config, model_override: str | None = None):
         self.client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
-        self.model = config.llm_model
+        self.model = model_override or config.llm_model
 
     async def complete(
         self,
