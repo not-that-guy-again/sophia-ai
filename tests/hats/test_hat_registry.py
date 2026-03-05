@@ -22,9 +22,9 @@ async def test_equip_hat():
     assert registry.get_active() is not None
     assert registry.get_active().name == "customer-service"
 
-    # Tools: 18 hat tools + 3 framework comm tools + converse
+    # Tools: 19 hat tools + 3 framework comm tools + converse
     defs = tool_reg.get_definitions()
-    assert len(defs) == 22
+    assert len(defs) == 23
 
 
 async def test_unequip_hat():
@@ -32,7 +32,7 @@ async def test_unequip_hat():
     registry = HatRegistry(hats_dir=HATS_DIR, tool_registry=tool_reg)
 
     await registry.equip("customer-service")
-    assert len(tool_reg.get_definitions()) == 22
+    assert len(tool_reg.get_definitions()) == 23
 
     await registry.unequip()
     assert registry.get_active() is None
@@ -71,7 +71,7 @@ async def test_converse_persists_after_hat_switch():
     await registry.equip("customer-service")
     defs = tool_reg.get_definitions()
     assert any(d["name"] == "converse" for d in defs)
-    assert len(defs) == 22
+    assert len(defs) == 23
 
 
 def test_get_active_or_raise_no_hat():

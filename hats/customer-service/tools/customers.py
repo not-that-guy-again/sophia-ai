@@ -17,6 +17,7 @@ class LookUpCustomerTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.customer_service = services.get("customer")
@@ -60,6 +61,7 @@ class GetCustomerOrderHistoryTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.customer_service = services.get("customer")

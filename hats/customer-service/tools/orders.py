@@ -23,6 +23,7 @@ class LookUpOrderTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.order_service = services.get("order")
@@ -86,6 +87,7 @@ class PlaceNewOrderTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.order_service = services.get("order")
@@ -137,6 +139,7 @@ class CancelOrderTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None  # Variable based on order value
+    risk_floor = None
 
     def inject_services(self, services):
         self.order_service = services.get("order")

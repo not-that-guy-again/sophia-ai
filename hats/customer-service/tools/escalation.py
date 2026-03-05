@@ -26,6 +26,7 @@ class EscalateToHumanTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     async def execute(self, params: dict) -> ToolResult:
         priority = params.get("priority", "medium")

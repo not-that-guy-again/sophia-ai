@@ -25,6 +25,7 @@ from sophia.core.proposer import CandidateAction, Proposal, Proposer
 from sophia.core.response_generator import ResponseGenerator
 from sophia.core.escalation_gate import check_escalation_triggers
 from sophia.core.risk_classifier import RiskClassification, classify
+from sophia.core.risk_floor import TIER_ORDER as _FLOOR_TIER_ORDER, get_proposal_floor
 from sophia.hats.registry import HatRegistry
 from sophia.hats.schema import HatConfig
 from sophia.llm.provider import get_provider
@@ -46,6 +47,28 @@ _SITUATION_EVAL_EXEMPT_INTENTS = frozenset({"general_inquiry"})
 def _is_defensive_proposal(candidate) -> bool:
     """Return True if the candidate is a defensive (non-action) proposal."""
     return candidate.tool_name in DEFENSIVE_TOOL_NAMES
+
+
+def _find_floor_trigger(
+    candidates: list[CandidateAction],
+    tool_registry: ToolRegistry,
+    floor: str,
+) -> str | None:
+    """Return the name of the first tool declaring the given risk_floor."""
+    for candidate in candidates:
+        tool = tool_registry.get(candidate.tool_name)
+        if tool and getattr(tool, "risk_floor", None) == floor:
+            return candidate.tool_name
+    return None
+
+
+def _max_tier(a: str | None, b: str | None) -> str | None:
+    """Return the higher of two tier values, or the non-None one."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return a if _FLOOR_TIER_ORDER[a] >= _FLOOR_TIER_ORDER[b] else b
 
 
 def _node_to_dict(node) -> dict:
@@ -106,6 +129,9 @@ class PipelineResult:
     preflight_ack_at: float | None = None
     metadata: dict = field(default_factory=dict)
     escalation_trigger_matched: str | None = None
+    risk_floor_short_circuit: bool = False
+    risk_floor_trigger_tool: str | None = None
+    risk_floor_trigger_value: str | None = None
     situation_tree: ConsequenceTree | None = None
     situation_evaluation_results: list = field(default_factory=list)
     situation_risk_classification: RiskClassification | None = None
@@ -129,6 +155,9 @@ class PipelineResult:
             "preflight_ack": self.preflight_ack,
             "preflight_ack_at": self.preflight_ack_at,
             "escalation_trigger_matched": self.escalation_trigger_matched,
+            "risk_floor_short_circuit": self.risk_floor_short_circuit,
+            "risk_floor_trigger_tool": self.risk_floor_trigger_tool,
+            "risk_floor_trigger_value": self.risk_floor_trigger_value,
             "metadata": self.metadata,
         }
         if self.situation_tree is not None:
@@ -364,6 +393,54 @@ class AgentLoop:
                 if on_preflight_ack:
                     await on_preflight_ack(preflight_ack)
 
+        # ── Risk floor check (ADR-031) ──────────────────────────────────────
+        proposal_floor = get_proposal_floor(proposal.candidates, self.tool_registry)
+
+        if proposal_floor == "RED":
+            trigger_tool = _find_floor_trigger(proposal.candidates, self.tool_registry, "RED")
+            logger.info("Risk floor RED on tool '%s' — skipping evaluation", trigger_tool)
+
+            refusal_rc = RiskClassification(
+                tier="RED",
+                weighted_score=-1.0,
+                recommended_action=None,
+                explanation=(
+                    f"Tool '{trigger_tool}' declares risk_floor='RED'. "
+                    "This action is prohibited by policy regardless of context."
+                ),
+                override_reason="risk_floor",
+            )
+            execution = self.executor.build_refusal(proposal, refusal_rc, trees=[])
+            response = await self.response_generator.generate(
+                user_message=message,
+                risk_tier="RED",
+                action_taken=execution.action_taken.tool_name,
+                action_reasoning=execution.action_taken.reasoning,
+                tool_result_message=execution.tool_result.message,
+            )
+
+            pipeline_result = PipelineResult(
+                intent=intent,
+                proposal=proposal,
+                consequence_trees=[],
+                evaluation_results=[],
+                risk_classification=refusal_rc,
+                execution=execution,
+                response=response,
+                bypassed=False,
+                risk_floor_short_circuit=True,
+                risk_floor_trigger_tool=trigger_tool,
+                risk_floor_trigger_value="RED",
+                preflight_ack=preflight_ack,
+                preflight_ack_at=preflight_ack_at,
+                metadata={"hat": hat_name, "short_circuit_reason": "risk_floor"},
+            )
+            await self._persist_memory(message, pipeline_result)
+            return pipeline_result
+
+        # For YELLOW/ORANGE floors, the pipeline runs but the floor is applied
+        evaluation_min_tier = proposal_floor  # None, "YELLOW", or "ORANGE"
+
         # Check for defensive proposal requiring situation evaluation (ADR-030)
         top_candidate = proposal.candidates[0] if proposal.candidates else None
         if top_candidate and _is_defensive_proposal(top_candidate):
@@ -408,12 +485,13 @@ class AgentLoop:
 
         # Step 4: Evaluation panel — run 4 evaluators in parallel on top candidate's tree
         top_tree = consequence_trees[0] if consequence_trees else None
+        effective_min_tier = _max_tier(escalation_min_tier, evaluation_min_tier)
         evaluation_results, risk_classification = await self._run_evaluation_panel(
             top_tree,
             hat,
             intent,
             proposal.candidates,
-            min_tier=escalation_min_tier,
+            min_tier=effective_min_tier,
         )
         logger.info(
             "Risk classification: %s (score=%.2f)",
@@ -449,6 +527,15 @@ class AgentLoop:
         else:
             response = execution.tool_result.message
 
+        # Populate risk floor metadata for non-short-circuit paths
+        rf_trigger_tool = None
+        rf_trigger_value = None
+        if evaluation_min_tier is not None:
+            rf_trigger_tool = _find_floor_trigger(
+                proposal.candidates, self.tool_registry, evaluation_min_tier
+            )
+            rf_trigger_value = evaluation_min_tier
+
         pipeline_result = PipelineResult(
             intent=intent,
             proposal=proposal,
@@ -460,6 +547,9 @@ class AgentLoop:
             preflight_ack=preflight_ack,
             preflight_ack_at=preflight_ack_at,
             escalation_trigger_matched=escalation_result.matched_trigger,
+            risk_floor_short_circuit=False,
+            risk_floor_trigger_tool=rf_trigger_tool,
+            risk_floor_trigger_value=rf_trigger_value,
             metadata={
                 "hat": hat_name,
                 "source": source,

@@ -28,7 +28,7 @@ def test_load_hat():
 
     assert hat.manifest.name == "customer-service"
     assert hat.manifest.display_name == "Customer Service"
-    assert len(hat.manifest.tools) == 21
+    assert len(hat.manifest.tools) == 22
     assert "look_up_order" in hat.manifest.tools
     assert "escalate_to_human" in hat.manifest.tools
 
@@ -54,7 +54,7 @@ def test_load_hat_tools():
     hat = load_hat(CS_HAT_DIR)
     tools = load_hat_tools(hat)
 
-    assert len(tools) == 19
+    assert len(tools) == 20
     names = {t.name for t in tools}
     assert "look_up_order" in names
     assert "offer_full_refund" in names

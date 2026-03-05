@@ -21,6 +21,7 @@ class CheckCurrentInventoryTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.inventory_service = services.get("inventory")
