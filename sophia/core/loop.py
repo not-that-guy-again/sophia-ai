@@ -397,9 +397,7 @@ class AgentLoop:
         proposal_floor = get_proposal_floor(proposal.candidates, self.tool_registry)
 
         if proposal_floor == "RED":
-            trigger_tool = _find_floor_trigger(
-                proposal.candidates, self.tool_registry, "RED"
-            )
+            trigger_tool = _find_floor_trigger(proposal.candidates, self.tool_registry, "RED")
             logger.info("Risk floor RED on tool '%s' — skipping evaluation", trigger_tool)
 
             refusal_rc = RiskClassification(
