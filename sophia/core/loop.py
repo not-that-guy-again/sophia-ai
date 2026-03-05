@@ -372,14 +372,21 @@ class AgentLoop:
             )
             if should_evaluate:
                 result = await self._handle_converse_with_evaluation(
-                    message, intent, proposal, hat_name, hat,
+                    message,
+                    intent,
+                    proposal,
+                    hat_name,
+                    hat,
                     conversation_history=conversation_history,
                     escalation_min_tier=escalation_min_tier,
                 )
             else:
                 # Genuine conversational bypass — greeting, chitchat, general inquiry (ADR-017)
                 result = await self._handle_converse(
-                    message, intent, proposal, hat_name,
+                    message,
+                    intent,
+                    proposal,
+                    hat_name,
                     conversation_history=conversation_history,
                 )
             result.escalation_trigger_matched = escalation_result.matched_trigger
@@ -402,7 +409,10 @@ class AgentLoop:
         # Step 4: Evaluation panel — run 4 evaluators in parallel on top candidate's tree
         top_tree = consequence_trees[0] if consequence_trees else None
         evaluation_results, risk_classification = await self._run_evaluation_panel(
-            top_tree, hat, intent, proposal.candidates,
+            top_tree,
+            hat,
+            intent,
+            proposal.candidates,
             min_tier=escalation_min_tier,
         )
         logger.info(
@@ -478,7 +488,9 @@ class AgentLoop:
         """Handle conversational bypass — skip consequence/evaluation/execution."""
         logger.info("Conversational bypass: skipping consequence engine and evaluation panel")
 
-        response = await self.response_generator.converse(message, conversation_history=conversation_history)
+        response = await self.response_generator.converse(
+            message, conversation_history=conversation_history
+        )
 
         # Build minimal pipeline result with empty consequence/evaluation/execution
         converse_candidate = proposal.candidates[0]
@@ -511,7 +523,9 @@ class AgentLoop:
 
         return pipeline_result
 
-    def _should_run_situation_evaluation(self, intent, top_candidate, gate_result, escalation_result=None) -> bool:
+    def _should_run_situation_evaluation(
+        self, intent, top_candidate, gate_result, escalation_result=None
+    ) -> bool:
         """Return True if the situation should be formally evaluated.
 
         Triggers when:
@@ -578,9 +592,9 @@ class AgentLoop:
             original_request=message,
         )
 
-        situation_eval_results = list(await asyncio.gather(
-            *[e.evaluate(situation_context) for e in self.evaluators]
-        ))
+        situation_eval_results = list(
+            await asyncio.gather(*[e.evaluate(situation_context) for e in self.evaluators])
+        )
 
         # 4. Classify situation risk
         situation_classification = classify(

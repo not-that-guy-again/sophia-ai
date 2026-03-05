@@ -23,7 +23,8 @@ class LookUpProductTool(Tool):
         details = await self.inventory_service.get_product_details(params["product_id"])
         if not details:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=f"Product {params['product_id']} not found",
             )
         return ToolResult(
@@ -59,7 +60,8 @@ class CheckWarrantyStatusTool(Tool):
     async def execute(self, params: dict) -> ToolResult:
         try:
             ws = await self.inventory_service.check_warranty_status(
-                params["order_id"], params["product_id"],
+                params["order_id"],
+                params["product_id"],
             )
         except ValueError as e:
             return ToolResult(success=False, data=None, message=str(e))

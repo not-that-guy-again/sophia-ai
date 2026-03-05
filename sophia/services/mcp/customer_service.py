@@ -15,6 +15,4 @@ class MCPCustomerService(CustomerService):
         return await self.adapter._call("search_customers", query=query)
 
     async def get_customer_history(self, customer_id: str) -> CustomerHistory:
-        return await self.adapter._call(
-            "get_customer_history", customer_id=customer_id
-        )
+        return await self.adapter._call("get_customer_history", customer_id=customer_id)

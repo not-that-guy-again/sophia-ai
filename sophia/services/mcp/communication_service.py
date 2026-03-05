@@ -37,9 +37,7 @@ class MCPCommunicationService(CommunicationService):
             await self.gmail_client.connect()
             self._gmail_connected = True
 
-    async def send_to_role(
-        self, role: str, message: CommunicationMessage
-    ) -> CommunicationResult:
+    async def send_to_role(self, role: str, message: CommunicationMessage) -> CommunicationResult:
         contact = self.policy.get(role)
         if not contact:
             return CommunicationResult(

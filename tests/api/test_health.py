@@ -50,8 +50,7 @@ async def test_health_check_degraded(client):
     """Health returns 503/degraded when DB is not initialized."""
     # No DB init — engine is None, should be degraded
     # Ensure engine is None by patching
-    with patch("sophia.api.routes._agent_loop", None), \
-         patch("sophia.audit.database._engine", None):
+    with patch("sophia.api.routes._agent_loop", None), patch("sophia.audit.database._engine", None):
         resp = client.get("/health")
         assert resp.status_code == 503
         data = resp.json()

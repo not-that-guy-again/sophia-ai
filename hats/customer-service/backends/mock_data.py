@@ -208,33 +208,48 @@ class MockDataStore:
 
     products: dict[str, ProductDetails] = {
         "PROD-001": ProductDetails(
-            "PROD-001", "Wireless Headphones",
+            "PROD-001",
+            "Wireless Headphones",
             "Premium noise-cancelling wireless headphones with 30-hour battery",
-            79.99, "Audio", {"battery_hours": 30, "noise_cancelling": True},
+            79.99,
+            "Audio",
+            {"battery_hours": 30, "noise_cancelling": True},
             warranty_months=12,
         ),
         "PROD-002": ProductDetails(
-            "PROD-002", "USB-C Cable",
+            "PROD-002",
+            "USB-C Cable",
             "Braided USB-C to USB-C cable, 6ft, 100W PD",
-            12.99, "Accessories", {"length_ft": 6, "power_delivery_w": 100},
+            12.99,
+            "Accessories",
+            {"length_ft": 6, "power_delivery_w": 100},
             warranty_months=6,
         ),
         "PROD-003": ProductDetails(
-            "PROD-003", "PlayStation 5",
+            "PROD-003",
+            "PlayStation 5",
             "Sony PlayStation 5 console, disc edition",
-            499.99, "Gaming", {"storage_gb": 825, "edition": "disc"},
+            499.99,
+            "Gaming",
+            {"storage_gb": 825, "edition": "disc"},
             warranty_months=12,
         ),
         "PROD-004": ProductDetails(
-            "PROD-004", "Laptop Stand",
+            "PROD-004",
+            "Laptop Stand",
             "Adjustable aluminum laptop stand, fits 10-17 inch laptops",
-            45.00, "Accessories", {"material": "aluminum", "max_size_inches": 17},
+            45.00,
+            "Accessories",
+            {"material": "aluminum", "max_size_inches": 17},
             warranty_months=24,
         ),
         "PROD-005": ProductDetails(
-            "PROD-005", "Mechanical Keyboard",
+            "PROD-005",
+            "Mechanical Keyboard",
             "RGB mechanical keyboard with Cherry MX Blue switches",
-            129.99, "Peripherals", {"switch_type": "Cherry MX Blue", "rgb": True},
+            129.99,
+            "Peripherals",
+            {"switch_type": "Cherry MX Blue", "rgb": True},
             warranty_months=24,
         ),
     }
@@ -257,7 +272,9 @@ class MockDataStore:
             last_location="Springfield, IL",
             events=[
                 TrackingEvent(NOW - timedelta(days=12), "Chicago, IL", "Picked up", "picked_up"),
-                TrackingEvent(NOW - timedelta(days=10), "Indianapolis, IN", "In transit", "in_transit"),
+                TrackingEvent(
+                    NOW - timedelta(days=10), "Indianapolis, IN", "In transit", "in_transit"
+                ),
                 TrackingEvent(NOW - timedelta(days=7), "Springfield, IL", "Delivered", "delivered"),
             ],
         ),
@@ -270,7 +287,9 @@ class MockDataStore:
             last_location="St. Louis, MO",
             events=[
                 TrackingEvent(NOW - timedelta(days=1), "Memphis, TN", "Picked up", "picked_up"),
-                TrackingEvent(NOW - timedelta(hours=8), "St. Louis, MO", "In transit", "in_transit"),
+                TrackingEvent(
+                    NOW - timedelta(hours=8), "St. Louis, MO", "In transit", "in_transit"
+                ),
             ],
         ),
         "ORD-77777": ShipmentTracking(

@@ -94,9 +94,7 @@ async def test_store_decision(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_store_and_retrieve_outcome(db_session: AsyncSession):
     result = _make_pipeline_result()
-    decision_id = await store_decision_with_hat(
-        db_session, result, "I need a refund"
-    )
+    decision_id = await store_decision_with_hat(db_session, result, "I need a refund")
 
     outcome = await store_outcome(
         db_session,
@@ -117,9 +115,7 @@ async def test_store_and_retrieve_outcome(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_store_and_retrieve_feedback(db_session: AsyncSession):
     result = _make_pipeline_result(risk_tier="YELLOW")
-    decision_id = await store_decision_with_hat(
-        db_session, result, "I need a refund"
-    )
+    decision_id = await store_decision_with_hat(db_session, result, "I need a refund")
 
     fb = await store_feedback(
         db_session,
@@ -197,9 +193,7 @@ async def test_get_decision_returns_none_for_missing(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_store_bypassed_decision(db_session: AsyncSession):
     result = _make_pipeline_result(bypassed=True, tool_name="converse")
-    decision_id = await store_decision_with_hat(
-        db_session, result, "Hello!"
-    )
+    decision_id = await store_decision_with_hat(db_session, result, "Hello!")
 
     decision = await get_decision(db_session, decision_id)
     assert decision.bypassed is True
@@ -210,7 +204,10 @@ async def test_store_bypassed_decision(db_session: AsyncSession):
 async def test_store_decision_with_hat_config(db_session: AsyncSession, cs_hat_config):
     result = _make_pipeline_result()
     decision_id = await store_decision_with_hat(
-        db_session, result, "test", hat_config=cs_hat_config,
+        db_session,
+        result,
+        "test",
+        hat_config=cs_hat_config,
     )
 
     decision = await get_decision(db_session, decision_id)

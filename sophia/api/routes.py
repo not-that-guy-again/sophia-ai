@@ -26,8 +26,10 @@ def _get_auth_dependency(scope: str):
     """Return a conditional auth dependency based on settings."""
     if settings.auth_enabled:
         from sophia.auth.middleware import require_scope
+
         return Depends(require_scope(scope))
     return Depends(lambda: None)
+
 
 # Lazily initialized agent loop (created on first request)
 _agent_loop: AgentLoop | None = None
@@ -49,8 +51,10 @@ async def health():
     # Check database connectivity
     try:
         from sophia.audit.database import _engine
+
         if _engine is not None:
             from sqlalchemy import text
+
             async with _engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
             checks["database"] = "ok"
@@ -80,6 +84,7 @@ async def health():
     status = "degraded" if degraded else "ok"
     status_code = 503 if degraded else 200
     from fastapi.responses import JSONResponse
+
     return JSONResponse(
         status_code=status_code,
         content=HealthResponse(status=status, version="0.1.0", checks=checks).model_dump(),
@@ -179,10 +184,12 @@ async def websocket_chat(websocket: WebSocket):
         # Notify client which hat is equipped
         hat = loop.hat_registry.get_active()
         if hat:
-            await websocket.send_json({
-                "event": "hat_equipped",
-                "data": {"name": hat.name, "display_name": hat.display_name},
-            })
+            await websocket.send_json(
+                {
+                    "event": "hat_equipped",
+                    "data": {"name": hat.name, "display_name": hat.display_name},
+                }
+            )
 
         while True:
             raw = await websocket.receive_text()
@@ -192,59 +199,77 @@ async def websocket_chat(websocket: WebSocket):
 
             # Pre-flight ack callback: emit immediately via WebSocket
             async def emit_ack(msg: str):
-                await websocket.send_json({
-                    "event": "preflight_ack",
-                    "data": {"message": msg},
-                })
+                await websocket.send_json(
+                    {
+                        "event": "preflight_ack",
+                        "data": {"message": msg},
+                    }
+                )
 
             # Run the full pipeline (includes evaluation panel)
-            result = await loop.process(message, on_preflight_ack=emit_ack, conversation_history=history)
+            result = await loop.process(
+                message, on_preflight_ack=emit_ack, conversation_history=history
+            )
 
             # Emit pipeline stage events for UI visualization
-            await websocket.send_json({
-                "event": "intent_parsed",
-                "data": asdict(result.intent),
-            })
+            await websocket.send_json(
+                {
+                    "event": "intent_parsed",
+                    "data": asdict(result.intent),
+                }
+            )
 
-            await websocket.send_json({
-                "event": "proposals_generated",
-                "data": {"candidates": [asdict(c) for c in result.proposal.candidates]},
-            })
+            await websocket.send_json(
+                {
+                    "event": "proposals_generated",
+                    "data": {"candidates": [asdict(c) for c in result.proposal.candidates]},
+                }
+            )
 
-            await websocket.send_json({
-                "event": "consequences_analyzed",
-                "data": {
-                    "trees": [_tree_to_dict(t) for t in result.consequence_trees],
-                },
-            })
+            await websocket.send_json(
+                {
+                    "event": "consequences_analyzed",
+                    "data": {
+                        "trees": [_tree_to_dict(t) for t in result.consequence_trees],
+                    },
+                }
+            )
 
             # Emit individual evaluator results
             for eval_result in result.evaluation_results:
-                await websocket.send_json({
-                    "event": "evaluator_complete",
-                    "data": _evaluation_to_dict(eval_result),
-                })
+                await websocket.send_json(
+                    {
+                        "event": "evaluator_complete",
+                        "data": _evaluation_to_dict(eval_result),
+                    }
+                )
 
             # Emit risk classification
-            await websocket.send_json({
-                "event": "risk_classified",
-                "data": _classification_to_dict(result.risk_classification),
-            })
+            await websocket.send_json(
+                {
+                    "event": "risk_classified",
+                    "data": _classification_to_dict(result.risk_classification),
+                }
+            )
 
-            await websocket.send_json({
-                "event": "action_executed",
-                "data": {
-                    "action_taken": asdict(result.execution.action_taken),
-                    "tool_result": asdict(result.execution.tool_result),
-                    "risk_tier": result.execution.risk_tier,
-                },
-            })
+            await websocket.send_json(
+                {
+                    "event": "action_executed",
+                    "data": {
+                        "action_taken": asdict(result.execution.action_taken),
+                        "tool_result": asdict(result.execution.tool_result),
+                        "risk_tier": result.execution.risk_tier,
+                    },
+                }
+            )
 
             # Final response
-            await websocket.send_json({
-                "event": "response_ready",
-                "data": {"response": result.response},
-            })
+            await websocket.send_json(
+                {
+                    "event": "response_ready",
+                    "data": {"response": result.response},
+                }
+            )
 
             # Audit log
             await _log_audit(loop, result, message)

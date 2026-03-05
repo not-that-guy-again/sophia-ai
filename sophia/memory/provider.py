@@ -24,9 +24,7 @@ class MemoryProvider(ABC):
         """Find episodes that reference a specific entity."""
 
     @abstractmethod
-    async def recall_similar(
-        self, query_embedding: list[float], limit: int = 5
-    ) -> list[Episode]:
+    async def recall_similar(self, query_embedding: list[float], limit: int = 5) -> list[Episode]:
         """Semantic similarity search over episodes."""
 
     @abstractmethod

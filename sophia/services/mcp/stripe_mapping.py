@@ -25,9 +25,7 @@ def _extract_json(result: MCPToolResult) -> dict:
             try:
                 return json.loads(block["text"])
             except (json.JSONDecodeError, KeyError) as exc:
-                raise MCPParseError(
-                    f"Failed to parse MCP text content as JSON: {exc}"
-                ) from exc
+                raise MCPParseError(f"Failed to parse MCP text content as JSON: {exc}") from exc
     raise MCPParseError("No text content block found in MCP result")
 
 
@@ -125,9 +123,7 @@ def _parse_stripe_customers(result: MCPToolResult) -> list[Customer]:
     customers_data = data.get("data", [data]) if isinstance(data, dict) else data
     customers = []
     for cust in customers_data:
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(cust)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(cust)}])
         customers.append(_parse_stripe_customer(single_result))
     return customers
 
@@ -276,9 +272,7 @@ def stripe_compensation_mapping() -> dict:
             "tool_name": "create_coupon",
             "build_args": lambda params: {
                 "percent_off": params.value if params.type == "percent" else None,
-                "amount_off": int(params.value * 100)
-                if params.type == "fixed_amount"
-                else None,
+                "amount_off": int(params.value * 100) if params.type == "fixed_amount" else None,
                 "currency": "usd" if params.type == "fixed_amount" else None,
                 "duration": "once",
             },

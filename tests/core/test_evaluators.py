@@ -56,13 +56,15 @@ def _make_context(hat_config: HatConfig) -> EvaluationContext:
 
 
 def _eval_response(score: float = 0.3, confidence: float = 0.8, flags: list | None = None) -> str:
-    return json.dumps({
-        "score": score,
-        "confidence": confidence,
-        "flags": flags or [],
-        "reasoning": "Test evaluation reasoning",
-        "key_concerns": ["test concern"],
-    })
+    return json.dumps(
+        {
+            "score": score,
+            "confidence": confidence,
+            "flags": flags or [],
+            "reasoning": "Test evaluation reasoning",
+            "key_concerns": ["test concern"],
+        }
+    )
 
 
 # --- Self-Interest Evaluator ---
@@ -106,7 +108,9 @@ async def test_tribal_evaluator(mock_llm: MockLLMProvider, cs_hat_config: HatCon
 
 
 @pytest.mark.asyncio
-async def test_tribal_auto_adds_catastrophic_flag(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_auto_adds_catastrophic_flag(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """Tribal evaluator auto-adds catastrophic_harm when score <= -0.8."""
     mock_llm.set_responses([_eval_response(score=-0.9)])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -117,7 +121,9 @@ async def test_tribal_auto_adds_catastrophic_flag(mock_llm: MockLLMProvider, cs_
 
 
 @pytest.mark.asyncio
-async def test_tribal_no_duplicate_catastrophic_flag(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_no_duplicate_catastrophic_flag(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """If LLM already returned catastrophic_harm, don't add it again."""
     mock_llm.set_responses([_eval_response(score=-0.9, flags=["catastrophic_harm"])])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -140,7 +146,9 @@ async def test_tribal_uses_hat_prompt(mock_llm: MockLLMProvider, cs_hat_config: 
 
 
 @pytest.mark.asyncio
-async def test_tribal_includes_original_request_in_situation_mode(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_includes_original_request_in_situation_mode(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """In situation mode with original_request, the user message includes the raw request text."""
     mock_llm.set_responses([_eval_response(score=-0.5, flags=["sets_bad_precedent"])])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -155,7 +163,9 @@ async def test_tribal_includes_original_request_in_situation_mode(mock_llm: Mock
 
 
 @pytest.mark.asyncio
-async def test_tribal_user_message_standard_mode(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_user_message_standard_mode(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """In standard response mode, user message uses the default format (no original_request)."""
     mock_llm.set_responses([_eval_response(score=-0.3)])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -228,7 +238,9 @@ async def test_domain_no_flags_score_unchanged(mock_llm: MockLLMProvider, cs_hat
 
 
 @pytest.mark.asyncio
-async def test_domain_flag_already_below_floor_unchanged(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_domain_flag_already_below_floor_unchanged(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """free_item_attempt with score already below floor → not changed."""
     mock_llm.set_responses([_eval_response(score=-0.80, flags=["free_item_attempt"])])
     evaluator = DomainEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -252,7 +264,9 @@ async def test_authority_evaluator(mock_llm: MockLLMProvider, cs_hat_config: Hat
 
 
 @pytest.mark.asyncio
-async def test_authority_includes_requestor_context(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_includes_requestor_context(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     mock_llm.set_responses([_eval_response()])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
     await evaluator.evaluate(_make_context(cs_hat_config))
@@ -276,7 +290,9 @@ async def test_authority_uses_hat_prompt(mock_llm: MockLLMProvider, cs_hat_confi
 
 
 @pytest.mark.asyncio
-async def test_authority_flag_with_neutral_score_is_clamped(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_flag_with_neutral_score_is_clamped(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """If flags are raised but score >= 0.0, clamp to -0.30."""
     mock_llm.set_responses([_eval_response(score=0.0, flags=["unverified_identity_claim"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -287,7 +303,9 @@ async def test_authority_flag_with_neutral_score_is_clamped(mock_llm: MockLLMPro
 
 
 @pytest.mark.asyncio
-async def test_authority_cross_customer_access_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_cross_customer_access_floor(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """cross_customer_access flag floors score to -0.70."""
     mock_llm.set_responses([_eval_response(score=-0.40, flags=["cross_customer_access"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -298,7 +316,9 @@ async def test_authority_cross_customer_access_floor(mock_llm: MockLLMProvider, 
 
 
 @pytest.mark.asyncio
-async def test_authority_flag_with_already_negative_score_unchanged(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_flag_with_already_negative_score_unchanged(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """If score is already negative and no special floor applies, don't change it."""
     mock_llm.set_responses([_eval_response(score=-0.60, flags=["unverified_identity_claim"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -314,13 +334,19 @@ async def test_authority_flag_with_already_negative_score_unchanged(mock_llm: Mo
 @pytest.mark.asyncio
 async def test_score_clamping(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Out-of-range scores should be clamped."""
-    mock_llm.set_responses([json.dumps({
-        "score": -2.5,
-        "confidence": 1.5,
-        "flags": [],
-        "reasoning": "extreme scores",
-        "key_concerns": [],
-    })])
+    mock_llm.set_responses(
+        [
+            json.dumps(
+                {
+                    "score": -2.5,
+                    "confidence": 1.5,
+                    "flags": [],
+                    "reasoning": "extreme scores",
+                    "key_concerns": [],
+                }
+            )
+        ]
+    )
     evaluator = SelfInterestEvaluator(llm=mock_llm, hat_config=cs_hat_config)
     result = await evaluator.evaluate(_make_context(cs_hat_config))
 
@@ -332,7 +358,9 @@ async def test_score_clamping(mock_llm: MockLLMProvider, cs_hat_config: HatConfi
 
 
 @pytest.mark.asyncio
-async def test_tribal_hat_prompt_includes_scoring_examples(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_hat_prompt_includes_scoring_examples(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """Scoring Examples section appears in the assembled tribal evaluator system prompt."""
     mock_llm.set_responses([_eval_response()])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -383,7 +411,9 @@ async def test_tribal_fabricated_claim_floor(mock_llm: MockLLMProvider, cs_hat_c
 
 
 @pytest.mark.asyncio
-async def test_tribal_social_engineering_already_below_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_tribal_social_engineering_already_below_floor(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """social_engineering with score already below floor → not changed."""
     mock_llm.set_responses([_eval_response(score=-0.70, flags=["social_engineering"])])
     evaluator = TribalEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -396,7 +426,9 @@ async def test_tribal_social_engineering_already_below_floor(mock_llm: MockLLMPr
 
 
 @pytest.mark.asyncio
-async def test_authority_social_engineering_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_social_engineering_floor(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """social_engineering flag floors authority score to -0.70."""
     mock_llm.set_responses([_eval_response(score=-0.40, flags=["social_engineering"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -407,7 +439,9 @@ async def test_authority_social_engineering_floor(mock_llm: MockLLMProvider, cs_
 
 
 @pytest.mark.asyncio
-async def test_authority_fabricated_claim_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_fabricated_claim_floor(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """fabricated_claim flag floors authority score to -0.55."""
     mock_llm.set_responses([_eval_response(score=-0.30, flags=["fabricated_claim"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)
@@ -418,7 +452,9 @@ async def test_authority_fabricated_claim_floor(mock_llm: MockLLMProvider, cs_ha
 
 
 @pytest.mark.asyncio
-async def test_authority_fabricated_claim_already_below_floor(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
+async def test_authority_fabricated_claim_already_below_floor(
+    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
+):
     """fabricated_claim with score already below -0.55 → not changed."""
     mock_llm.set_responses([_eval_response(score=-0.80, flags=["fabricated_claim"])])
     evaluator = AuthorityEvaluator(llm=mock_llm, hat_config=cs_hat_config)

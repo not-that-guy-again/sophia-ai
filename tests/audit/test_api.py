@@ -26,14 +26,16 @@ async def seeded_db():
         session.add(d1)
         await session.flush()
 
-        session.add(DecisionProposal(
-            decision_id=d1.id,
-            rank=0,
-            tool_name="offer_full_refund",
-            parameters={"order_id": "ORD-12345"},
-            reasoning="Valid request",
-            expected_outcome="Full refund",
-        ))
+        session.add(
+            DecisionProposal(
+                decision_id=d1.id,
+                rank=0,
+                tool_name="offer_full_refund",
+                parameters={"order_id": "ORD-12345"},
+                reasoning="Valid request",
+                expected_outcome="Full refund",
+            )
+        )
 
         d2 = Decision(
             hat_name="customer-service",
@@ -113,12 +115,14 @@ async def test_outcome_and_feedback_round_trip(seeded_db):
     session_factory, ids = seeded_db
     async with session_factory() as session:
         await store_outcome(
-            session, ids[0],
+            session,
+            ids[0],
             actual_outcome="Refund successful",
             outcome_matches_prediction=True,
         )
         await store_feedback(
-            session, ids[0],
+            session,
+            ids[0],
             feedback_type="note",
             original_tier="GREEN",
             reason="Smooth interaction",

@@ -76,9 +76,7 @@ async def list_keys(
     """List API keys for the authenticated tenant."""
     async with get_session() as session:
         result = await session.execute(
-            select(APIKeyRecord).where(
-                APIKeyRecord.tenant_id == _key.tenant_id
-            )
+            select(APIKeyRecord).where(APIKeyRecord.tenant_id == _key.tenant_id)
         )
         records = result.scalars().all()
 
@@ -115,9 +113,7 @@ async def revoke_key(
             raise HTTPException(status_code=404, detail="Key not found")
 
         await session.execute(
-            update(APIKeyRecord)
-            .where(APIKeyRecord.key_id == key_id)
-            .values(is_active=False)
+            update(APIKeyRecord).where(APIKeyRecord.key_id == key_id).values(is_active=False)
         )
         await session.commit()
 

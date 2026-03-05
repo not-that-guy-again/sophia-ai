@@ -16,9 +16,7 @@ class MockInventoryService(InventoryService):
     async def get_product_details(self, product_id: str) -> ProductDetails | None:
         return MockDataStore.products.get(product_id)
 
-    async def check_warranty_status(
-        self, order_id: str, product_id: str
-    ) -> WarrantyStatus:
+    async def check_warranty_status(self, order_id: str, product_id: str) -> WarrantyStatus:
         order = MockDataStore.orders.get(order_id)
         if not order:
             raise ValueError(f"Order {order_id} not found")

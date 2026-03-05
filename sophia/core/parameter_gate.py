@@ -73,9 +73,7 @@ class ParameterGate:
 
         for candidate in proposal.candidates:
             if candidate.tool_name == CONVERSE_TOOL_NAME:
-                validations.append(
-                    ParameterValidation(candidate=candidate, passed=True)
-                )
+                validations.append(ParameterValidation(candidate=candidate, passed=True))
                 converse_candidates.append(candidate)
                 continue
 
@@ -102,7 +100,10 @@ class ParameterGate:
                     if not v.passed:
                         for f in v.failures:
                             failure_summaries.append(f)
-                reasoning = " ".join(failure_summaries) + " Asking for the missing information before proceeding."
+                reasoning = (
+                    " ".join(failure_summaries)
+                    + " Asking for the missing information before proceeding."
+                )
                 synthesized = CandidateAction(
                     tool_name=CONVERSE_TOOL_NAME,
                     parameters={},
@@ -147,18 +148,14 @@ class ParameterGate:
 
         for field_name in required_fields:
             if field_name not in candidate.parameters or candidate.parameters[field_name] is None:
-                failures.append(
-                    f"{candidate.tool_name} requires {field_name} but it is missing."
-                )
+                failures.append(f"{candidate.tool_name} requires {field_name} but it is missing.")
                 continue
 
             value = candidate.parameters[field_name]
             if isinstance(value, str):
                 stripped = value.strip()
                 if stripped == "":
-                    failures.append(
-                        f"{field_name}: required but received empty value."
-                    )
+                    failures.append(f"{field_name}: required but received empty value.")
                 elif stripped.lower() in self.placeholders:
                     failures.append(
                         f"{candidate.tool_name} requires {field_name} but received placeholder '{value}'."

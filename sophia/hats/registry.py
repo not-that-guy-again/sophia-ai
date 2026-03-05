@@ -48,9 +48,7 @@ class HatRegistry:
     async def equip(self, hat_name: str) -> HatConfig:
         """Equip a hat: load config, initialize services, register tools, activate."""
         if hat_name not in self._available:
-            raise ValueError(
-                f"Hat '{hat_name}' not found. Available: {list(self._available)}"
-            )
+            raise ValueError(f"Hat '{hat_name}' not found. Available: {list(self._available)}")
 
         # Unequip current hat first
         if self._active:

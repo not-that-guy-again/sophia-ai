@@ -53,10 +53,13 @@ def client(app, admin_key):
 
 @pytest.mark.asyncio
 async def test_admin_create_key(client):
-    resp = client.post("/admin/keys", json={
-        "tenant_id": "new-tenant",
-        "scopes": ["chat"],
-    })
+    resp = client.post(
+        "/admin/keys",
+        json={
+            "tenant_id": "new-tenant",
+            "scopes": ["chat"],
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["tenant_id"] == "new-tenant"

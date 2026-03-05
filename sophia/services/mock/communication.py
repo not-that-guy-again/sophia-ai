@@ -17,14 +17,10 @@ class MockCommunicationService(CommunicationService):
         self.policy = policy or {}
         self._sent: list[tuple[str, CommunicationMessage]] = []
 
-    async def send_to_role(
-        self, role: str, message: CommunicationMessage
-    ) -> CommunicationResult:
+    async def send_to_role(self, role: str, message: CommunicationMessage) -> CommunicationResult:
         self._sent.append((role, message))
         logger.info("Mock communication to role=%s: %s", role, message.subject)
-        return CommunicationResult(
-            success=True, channel="mock", message_id="MOCK-001"
-        )
+        return CommunicationResult(success=True, channel="mock", message_id="MOCK-001")
 
     async def get_contacts(self) -> list[CommunicationContact]:
         return list(self.policy.values())

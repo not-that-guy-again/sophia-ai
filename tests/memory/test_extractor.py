@@ -19,45 +19,49 @@ def extractor(mock_llm, memory):
     return MemoryExtractor(llm=mock_llm, memory=memory)
 
 
-EXTRACTION_RESPONSE = json.dumps({
-    "episode": {
-        "participants": ["Abbie", "agent"],
-        "summary": "Abbie requested a refund for her damaged Litter Robot (ORD-12345). Agent processed a full refund.",
-        "actions_taken": ["offer_full_refund"],
-        "outcome": "Full refund of $299.99 issued to Abbie",
-    },
-    "entities": [
-        {
-            "entity_type": "person",
-            "name": "Abbie",
-            "attributes": {"order": "ORD-12345"},
+EXTRACTION_RESPONSE = json.dumps(
+    {
+        "episode": {
+            "participants": ["Abbie", "agent"],
+            "summary": "Abbie requested a refund for her damaged Litter Robot (ORD-12345). Agent processed a full refund.",
+            "actions_taken": ["offer_full_refund"],
+            "outcome": "Full refund of $299.99 issued to Abbie",
         },
-        {
-            "entity_type": "product",
-            "name": "Litter Robot",
-            "attributes": {"issue": "damaged", "price": "$299.99"},
-        },
-    ],
-    "relationships": [
-        {
-            "from_entity": "Abbie",
-            "relation": "purchased",
-            "to_entity": "Litter Robot",
-            "metadata": {"order_id": "ORD-12345"},
-        },
-    ],
-})
+        "entities": [
+            {
+                "entity_type": "person",
+                "name": "Abbie",
+                "attributes": {"order": "ORD-12345"},
+            },
+            {
+                "entity_type": "product",
+                "name": "Litter Robot",
+                "attributes": {"issue": "damaged", "price": "$299.99"},
+            },
+        ],
+        "relationships": [
+            {
+                "from_entity": "Abbie",
+                "relation": "purchased",
+                "to_entity": "Litter Robot",
+                "metadata": {"order_id": "ORD-12345"},
+            },
+        ],
+    }
+)
 
-EMPTY_EXTRACTION = json.dumps({
-    "episode": {
-        "participants": ["customer", "agent"],
-        "summary": "Customer greeted the agent.",
-        "actions_taken": [],
-        "outcome": "Conversational exchange",
-    },
-    "entities": [],
-    "relationships": [],
-})
+EMPTY_EXTRACTION = json.dumps(
+    {
+        "episode": {
+            "participants": ["customer", "agent"],
+            "summary": "Customer greeted the agent.",
+            "actions_taken": [],
+            "outcome": "Conversational exchange",
+        },
+        "entities": [],
+        "relationships": [],
+    }
+)
 
 
 @pytest.mark.asyncio
@@ -109,7 +113,9 @@ async def test_extract_and_store_empty_entities(mock_llm: MockLLMProvider, memor
 
 
 @pytest.mark.asyncio
-async def test_extract_stores_entities_referenced_on_episode(mock_llm: MockLLMProvider, memory, extractor):
+async def test_extract_stores_entities_referenced_on_episode(
+    mock_llm: MockLLMProvider, memory, extractor
+):
     mock_llm.set_responses([EXTRACTION_RESPONSE])
 
     episode = await extractor.extract_and_store(

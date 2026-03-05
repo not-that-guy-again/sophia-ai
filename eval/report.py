@@ -50,11 +50,13 @@ def generate_markdown(run: EvalRun) -> str:
 
     # Summary table
     overall_pass = run.scenarios_passed == run.total_scenarios
-    overall_label = "✅ ALL PASS" if overall_pass else f"❌ {run.total_scenarios - run.scenarios_passed} FAILED"
+    overall_label = (
+        "✅ ALL PASS" if overall_pass else f"❌ {run.total_scenarios - run.scenarios_passed} FAILED"
+    )
 
     lines += [
-        f"| Scenario | Name | Turns | Result |",
-        f"|----------|------|-------|--------|",
+        "| Scenario | Name | Turns | Result |",
+        "|----------|------|-------|--------|",
     ]
 
     for s in run.scenario_results:
@@ -99,8 +101,7 @@ def generate_markdown(run: EvalRun) -> str:
                 "",
                 f"> *Prompt:* {t.prompt}",
                 "",
-                f"- **Result:** {_tier_str(t.risk_tier)}"
-                + (" *(bypassed)*" if t.bypassed else ""),
+                f"- **Result:** {_tier_str(t.risk_tier)}" + (" *(bypassed)*" if t.bypassed else ""),
                 f"- **Latency:** {t.latency_seconds}s",
             ]
 
@@ -122,7 +123,7 @@ def generate_markdown(run: EvalRun) -> str:
 
             lines += [
                 "",
-                f"<details><summary>Agent response</summary>",
+                "<details><summary>Agent response</summary>",
                 "",
                 t.response,
                 "",
@@ -208,6 +209,7 @@ def write_reports(run: EvalRun, output_dir: Path) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     import datetime
+
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     md_path = output_dir / f"eval_{stamp}.md"

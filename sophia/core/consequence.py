@@ -233,9 +233,7 @@ class ConsequenceEngine:
         valid_ids = {s.id for s in self.hat_config.stakeholders.stakeholders}
         self._validate_refs_recursive(nodes, valid_ids)
 
-    def _validate_refs_recursive(
-        self, nodes: list[ConsequenceNode], valid_ids: set[str]
-    ) -> None:
+    def _validate_refs_recursive(self, nodes: list[ConsequenceNode], valid_ids: set[str]) -> None:
         for node in nodes:
             for ref in node.stakeholders_affected:
                 if ref not in valid_ids:

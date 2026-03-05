@@ -51,9 +51,7 @@ class Executor:
             logger.info("Executor: converse candidate, skipping tool registry")
             return ExecutionResult(
                 action_taken=candidate,
-                tool_result=ToolResult(
-                    success=True, data=None, message="Conversational response"
-                ),
+                tool_result=ToolResult(success=True, data=None, message="Conversational response"),
                 risk_tier="GREEN",
             )
 
@@ -78,8 +76,10 @@ class Executor:
         trees: "list[ConsequenceTree]",
     ) -> ExecutionResult:
         """Build a YELLOW tier response: present action for user confirmation."""
-        candidate = proposal.candidates[0] if proposal.candidates else CandidateAction(
-            tool_name="none", reasoning="No candidates"
+        candidate = (
+            proposal.candidates[0]
+            if proposal.candidates
+            else CandidateAction(tool_name="none", reasoning="No candidates")
         )
 
         concern_lines = []
@@ -95,13 +95,14 @@ class Executor:
 
         message = (
             f"I'd like to proceed with {candidate.tool_name}, "
-            f"but this requires your confirmation.\n\n"
-            + "\n".join(concern_lines)
+            f"but this requires your confirmation.\n\n" + "\n".join(concern_lines)
         )
 
         return ExecutionResult(
             action_taken=candidate,
-            tool_result=ToolResult(success=True, data={"requires_confirmation": True}, message=message),
+            tool_result=ToolResult(
+                success=True, data={"requires_confirmation": True}, message=message
+            ),
             risk_tier="YELLOW",
             risk_classification=risk_classification,
         )
@@ -112,8 +113,10 @@ class Executor:
         risk_classification: "RiskClassification",
     ) -> ExecutionResult:
         """Build an ORANGE tier response: auto-escalate to human."""
-        candidate = proposal.candidates[0] if proposal.candidates else CandidateAction(
-            tool_name="none", reasoning="No candidates"
+        candidate = (
+            proposal.candidates[0]
+            if proposal.candidates
+            else CandidateAction(tool_name="none", reasoning="No candidates")
         )
 
         # Try to call escalate_to_human if the tool is registered
@@ -161,8 +164,10 @@ class Executor:
         trees: "list[ConsequenceTree]",
     ) -> ExecutionResult:
         """Build a RED tier response: refuse with harmful branch citations."""
-        candidate = proposal.candidates[0] if proposal.candidates else CandidateAction(
-            tool_name="none", reasoning="No candidates"
+        candidate = (
+            proposal.candidates[0]
+            if proposal.candidates
+            else CandidateAction(tool_name="none", reasoning="No candidates")
         )
 
         harm_citations = []
@@ -175,7 +180,9 @@ class Executor:
                     f"probability={tree.worst_terminal.probability:.0%})"
                 )
 
-        citation_text = "\n".join(harm_citations) if harm_citations else "Multiple risk factors identified."
+        citation_text = (
+            "\n".join(harm_citations) if harm_citations else "Multiple risk factors identified."
+        )
 
         override = ""
         if risk_classification.override_reason:

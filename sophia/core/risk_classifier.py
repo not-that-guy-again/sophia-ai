@@ -74,7 +74,9 @@ def classify(
             flags=all_flags,
             override_reason="Catastrophic harm flag detected",
             recommended_action=None,
-            explanation=_build_explanation(results, "RED", "Catastrophic harm flag triggered automatic RED."),
+            explanation=_build_explanation(
+                results, "RED", "Catastrophic harm flag triggered automatic RED."
+            ),
         )
 
     # --- Override 2: 3+ evaluators below -0.5 → RED ---
@@ -88,7 +90,9 @@ def classify(
             override_reason=f"{severe_count} evaluators scored below -0.5",
             recommended_action=None,
             explanation=_build_explanation(
-                results, "RED", f"{severe_count} of {len(results)} evaluators flagged severe concerns."
+                results,
+                "RED",
+                f"{severe_count} of {len(results)} evaluators flagged severe concerns.",
             ),
         )
 

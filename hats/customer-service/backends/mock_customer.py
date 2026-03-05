@@ -13,9 +13,7 @@ class MockCustomerService(CustomerService):
         return [
             c
             for c in MockDataStore.customers.values()
-            if q in c.name.lower()
-            or q in c.email.lower()
-            or (c.phone and q in c.phone)
+            if q in c.name.lower() or q in c.email.lower() or (c.phone and q in c.phone)
         ]
 
     async def get_customer_history(self, customer_id: str) -> CustomerHistory:
@@ -23,9 +21,7 @@ class MockCustomerService(CustomerService):
         if not customer:
             raise ValueError(f"Customer {customer_id} not found")
 
-        orders = [
-            o for o in MockDataStore.orders.values() if o.customer_id == customer_id
-        ]
+        orders = [o for o in MockDataStore.orders.values() if o.customer_id == customer_id]
         orders.sort(key=lambda o: o.created_at, reverse=True)
 
         returns = [

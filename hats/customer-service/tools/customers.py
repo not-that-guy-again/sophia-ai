@@ -28,7 +28,8 @@ class LookUpCustomerTool(Tool):
 
         if not any([email, phone, name]):
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message="At least one search parameter (email, phone, or name) is required",
             )
 
@@ -36,7 +37,8 @@ class LookUpCustomerTool(Tool):
         customers = await self.customer_service.search_customers(query)
         if not customers:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=f"No customers found matching '{query}'",
             )
         return ToolResult(
@@ -64,9 +66,7 @@ class GetCustomerOrderHistoryTool(Tool):
 
     async def execute(self, params: dict) -> ToolResult:
         try:
-            history = await self.customer_service.get_customer_history(
-                params["customer_id"]
-            )
+            history = await self.customer_service.get_customer_history(params["customer_id"])
         except ValueError as e:
             return ToolResult(success=False, data=None, message=str(e))
 

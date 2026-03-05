@@ -1,12 +1,10 @@
 """Tests for the pre-flight acknowledgment (ADR-021)."""
 
-import pytest
-
 from sophia.core.input_gate import Intent
 from sophia.core.loop import CONVERSE_TOOL_NAME
 from sophia.core.preflight_ack import CORE_DEFAULT_ACK, maybe_generate_ack
 from sophia.core.proposer import CandidateAction
-from sophia.hats.schema import HatConfig, HatManifest, StakeholderRegistry
+from sophia.hats.schema import HatConfig, HatManifest
 from sophia.tools.base import Tool, ToolResult
 from sophia.tools.registry import ToolRegistry
 

@@ -22,35 +22,42 @@ TOOLS_LIST = [
     {"name": "cancel_order", "description": "Cancel an order", "inputSchema": {}},
 ]
 
-ORDER_JSON = json.dumps({
-    "id": 12345,
-    "name": "#1001",
-    "email": "cust@example.com",
-    "created_at": "2025-01-15T10:00:00Z",
-    "updated_at": "2025-01-15T10:00:00Z",
-    "financial_status": "paid",
-    "fulfillment_status": "fulfilled",
-    "total_price": "79.99",
-    "currency": "USD",
-    "customer": {"id": 100, "first_name": "Jane", "last_name": "Doe", "email": "cust@example.com"},
-    "line_items": [
-        {
-            "id": 1,
-            "title": "Widget",
-            "quantity": 2,
-            "price": "39.99",
-            "sku": "WGT-001",
-            "product_id": "PROD-1",
-        }
-    ],
-    "shipping_address": {
-        "address1": "123 Main St",
-        "city": "Anytown",
-        "province": "CA",
-        "country": "US",
-        "zip": "90210",
-    },
-})
+ORDER_JSON = json.dumps(
+    {
+        "id": 12345,
+        "name": "#1001",
+        "email": "cust@example.com",
+        "created_at": "2025-01-15T10:00:00Z",
+        "updated_at": "2025-01-15T10:00:00Z",
+        "financial_status": "paid",
+        "fulfillment_status": "fulfilled",
+        "total_price": "79.99",
+        "currency": "USD",
+        "customer": {
+            "id": 100,
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "cust@example.com",
+        },
+        "line_items": [
+            {
+                "id": 1,
+                "title": "Widget",
+                "quantity": 2,
+                "price": "39.99",
+                "sku": "WGT-001",
+                "product_id": "PROD-1",
+            }
+        ],
+        "shipping_address": {
+            "address1": "123 Main St",
+            "city": "Anytown",
+            "province": "CA",
+            "country": "US",
+            "zip": "90210",
+        },
+    }
+)
 
 
 def _fake_mcp_handler(request: httpx.Request) -> httpx.Response:
@@ -60,32 +67,48 @@ def _fake_mcp_handler(request: httpx.Request) -> httpx.Response:
     req_id = body.get("id")
 
     if method == "initialize":
-        return httpx.Response(200, json={
-            "jsonrpc": "2.0", "id": req_id,
-            "result": {"protocolVersion": "2024-11-05"},
-        })
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"protocolVersion": "2024-11-05"},
+            },
+        )
 
     if method == "tools/list":
-        return httpx.Response(200, json={
-            "jsonrpc": "2.0", "id": req_id,
-            "result": {"tools": TOOLS_LIST},
-        })
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"tools": TOOLS_LIST},
+            },
+        )
 
     if method == "tools/call":
         tool_name = body["params"]["name"]
         if tool_name == "get_order":
-            return httpx.Response(200, json={
-                "jsonrpc": "2.0", "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": ORDER_JSON}],
-                    "isError": False,
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": ORDER_JSON}],
+                        "isError": False,
+                    },
                 },
-            })
+            )
 
-    return httpx.Response(200, json={
-        "jsonrpc": "2.0", "id": req_id,
-        "error": {"code": -32601, "message": "Method not found"},
-    })
+    return httpx.Response(
+        200,
+        json={
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32601, "message": "Method not found"},
+        },
+    )
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────

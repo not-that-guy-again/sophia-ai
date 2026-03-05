@@ -81,9 +81,7 @@ def test_address():
 
 def test_shipment_tracking():
     event = TrackingEvent(NOW, "Chicago, IL", "In transit", "in_transit")
-    tracking = ShipmentTracking(
-        "ORD-001", "UPS", "1Z999", "in_transit", NOW, events=[event]
-    )
+    tracking = ShipmentTracking("ORD-001", "UPS", "1Z999", "in_transit", NOW, events=[event])
     d = asdict(tracking)
     assert len(d["events"]) == 1
     assert d["carrier"] == "UPS"
@@ -145,8 +143,11 @@ def test_return_initiation_result():
 
 def test_return_status():
     rs = ReturnStatus(
-        "RET-001", "ORD-001", "initiated",
-        [ReturnItem("PROD-001", 1, "defective")], NOW,
+        "RET-001",
+        "ORD-001",
+        "initiated",
+        [ReturnItem("PROD-001", 1, "defective")],
+        NOW,
     )
     d = asdict(rs)
     assert d["refund_amount"] is None

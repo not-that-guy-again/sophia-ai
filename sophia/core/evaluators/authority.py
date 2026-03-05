@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class AuthorityEvaluator(BaseEvaluator):
-
     @property
     def name(self) -> str:
         return "authority"
@@ -32,7 +31,9 @@ class AuthorityEvaluator(BaseEvaluator):
             requestor_context=json.dumps(context.requestor_context, indent=2),
             tree_summary=self.format_tree_summary(context.consequence_tree),
             stakeholders=self.format_stakeholders(context.stakeholders),
-            constraints=json.dumps(context.constraints, indent=2) if context.constraints else "No constraints.",
+            constraints=json.dumps(context.constraints, indent=2)
+            if context.constraints
+            else "No constraints.",
         )
 
     def _get_user_message(self, context: EvaluationContext) -> str:

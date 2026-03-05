@@ -21,8 +21,10 @@ class InitiateReturnTool(Tool):
                         "reason": {
                             "type": "string",
                             "enum": [
-                                "defective", "wrong_item",
-                                "not_as_described", "changed_mind",
+                                "defective",
+                                "wrong_item",
+                                "not_as_described",
+                                "changed_mind",
                             ],
                         },
                     },
@@ -50,7 +52,9 @@ class InitiateReturnTool(Tool):
         ]
         try:
             result = await self.compensation_service.initiate_return(
-                params["order_id"], items, params["reason"],
+                params["order_id"],
+                items,
+                params["reason"],
             )
         except ValueError as e:
             return ToolResult(success=False, data=None, message=str(e))
@@ -82,7 +86,8 @@ class CheckReturnStatusTool(Tool):
         status = await self.compensation_service.check_return_status(params["return_id"])
         if not status:
             return ToolResult(
-                success=False, data=None,
+                success=False,
+                data=None,
                 message=f"Return {params['return_id']} not found",
             )
         return ToolResult(

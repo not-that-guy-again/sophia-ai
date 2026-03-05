@@ -153,9 +153,7 @@ class TestMapShopifyStatus:
 
 class TestExtractJson:
     def test_valid_text_block(self):
-        result = MCPToolResult(
-            content=[{"type": "text", "text": '{"key": "value"}'}]
-        )
+        result = MCPToolResult(content=[{"type": "text", "text": '{"key": "value"}'}])
         data = _extract_json(result)
         assert data == {"key": "value"}
 
@@ -170,9 +168,7 @@ class TestExtractJson:
             _extract_json(result)
 
     def test_invalid_json(self):
-        result = MCPToolResult(
-            content=[{"type": "text", "text": "not json {{{"}]
-        )
+        result = MCPToolResult(content=[{"type": "text", "text": "not json {{{"}])
         with pytest.raises(MCPParseError, match="Failed to parse"):
             _extract_json(result)
 

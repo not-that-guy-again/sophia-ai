@@ -17,7 +17,7 @@ async def require_auth(request: Request) -> object:
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
-    raw_key = auth_header[len("Bearer "):]
+    raw_key = auth_header[len("Bearer ") :]
     if not raw_key:
         raise HTTPException(status_code=401, detail="Empty API key")
 
@@ -42,6 +42,7 @@ async def require_auth(request: Request) -> object:
 
 def require_scope(scope: str):
     """Return a dependency that checks the API key has the given scope."""
+
     async def checker(key=Depends(require_auth)):
         if scope not in key.scopes:
             raise HTTPException(
@@ -49,4 +50,5 @@ def require_scope(scope: str):
                 detail=f"API key lacks '{scope}' scope",
             )
         return key
+
     return checker

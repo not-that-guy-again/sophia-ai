@@ -178,7 +178,9 @@ async def report_outcome(decision_id: int, body: AuditOutcomeCreate):
         if decision is None:
             raise HTTPException(status_code=404, detail=f"Decision {decision_id} not found")
         if decision.outcome is not None:
-            raise HTTPException(status_code=409, detail="Outcome already recorded for this decision")
+            raise HTTPException(
+                status_code=409, detail="Outcome already recorded for this decision"
+            )
 
         outcome = await store_outcome(
             session,

@@ -31,9 +31,7 @@ def _extract_json(result: MCPToolResult) -> dict:
             try:
                 return json.loads(block["text"])
             except (json.JSONDecodeError, KeyError) as exc:
-                raise MCPParseError(
-                    f"Failed to parse MCP text content as JSON: {exc}"
-                ) from exc
+                raise MCPParseError(f"Failed to parse MCP text content as JSON: {exc}") from exc
     raise MCPParseError("No text content block found in MCP result")
 
 
@@ -136,9 +134,7 @@ def _parse_wc_orders(result: MCPToolResult) -> list[Order]:
     orders_data = data.get("orders", [data]) if isinstance(data, dict) else data
     orders = []
     for order_data in orders_data:
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(order_data)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(order_data)}])
         orders.append(_parse_wc_order(single_result))
     return orders
 
@@ -183,14 +179,10 @@ def _parse_wc_customer(result: MCPToolResult) -> Customer:
 def _parse_wc_customers(result: MCPToolResult) -> list[Customer]:
     """Parse a WooCommerce list_customers response."""
     data = _extract_json(result)
-    customers_data = (
-        data.get("customers", [data]) if isinstance(data, dict) else data
-    )
+    customers_data = data.get("customers", [data]) if isinstance(data, dict) else data
     customers = []
     for cust in customers_data:
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(cust)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(cust)}])
         customers.append(_parse_wc_customer(single_result))
     return customers
 
@@ -201,9 +193,7 @@ def _parse_wc_customer_history(result: MCPToolResult) -> CustomerHistory:
     orders_data = data.get("orders", [data]) if isinstance(data, dict) else data
     orders = []
     for order_data in orders_data:
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(order_data)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(order_data)}])
         orders.append(_parse_wc_order(single_result))
 
     customer = Customer(
@@ -235,9 +225,7 @@ def _parse_wc_product(result: MCPToolResult) -> ProductDetails:
 def _parse_wc_stock(result: MCPToolResult) -> list[ProductStock]:
     """Parse a WooCommerce products list for stock information."""
     data = _extract_json(result)
-    products_data = (
-        data.get("products", [data]) if isinstance(data, dict) else data
-    )
+    products_data = data.get("products", [data]) if isinstance(data, dict) else data
     stocks = []
     for prod in products_data:
         qty = prod.get("stock_quantity") or 0
@@ -368,9 +356,7 @@ def woocommerce_inventory_mapping() -> dict:
         },
         "check_stock": {
             "tool_name": "wc_products_list",
-            "build_args": lambda product_id=None: {"product_id": product_id}
-            if product_id
-            else {},
+            "build_args": lambda product_id=None: {"product_id": product_id} if product_id else {},
             "parse_response": _parse_wc_stock,
         },
         "check_warranty_status": {

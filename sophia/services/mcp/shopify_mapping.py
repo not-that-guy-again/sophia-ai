@@ -30,9 +30,7 @@ def _extract_json(result: MCPToolResult) -> dict:
             try:
                 return json.loads(block["text"])
             except (json.JSONDecodeError, KeyError) as exc:
-                raise MCPParseError(
-                    f"Failed to parse MCP text content as JSON: {exc}"
-                ) from exc
+                raise MCPParseError(f"Failed to parse MCP text content as JSON: {exc}") from exc
     raise MCPParseError("No text content block found in MCP result")
 
 
@@ -127,9 +125,7 @@ def _parse_shopify_orders(result: MCPToolResult) -> list[Order]:
     orders = []
     for order_data in orders_data:
         # Re-wrap each order for parse_shopify_order
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(order_data)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(order_data)}])
         orders.append(_parse_shopify_order(single_result))
     return orders
 
@@ -183,14 +179,10 @@ def _parse_shopify_customer(result: MCPToolResult) -> Customer:
 def _parse_shopify_customers(result: MCPToolResult) -> list[Customer]:
     """Parse a Shopify search_customers response."""
     data = _extract_json(result)
-    customers_data = (
-        data.get("customers", [data]) if isinstance(data, dict) else data
-    )
+    customers_data = data.get("customers", [data]) if isinstance(data, dict) else data
     customers = []
     for cust in customers_data:
-        single_result = MCPToolResult(
-            content=[{"type": "text", "text": json.dumps(cust)}]
-        )
+        single_result = MCPToolResult(content=[{"type": "text", "text": json.dumps(cust)}])
         customers.append(_parse_shopify_customer(single_result))
     return customers
 
@@ -336,9 +328,7 @@ def shopify_inventory_mapping() -> dict:
         },
         "check_stock": {
             "tool_name": "get_inventory_level",
-            "build_args": lambda product_id=None: {"product_id": product_id}
-            if product_id
-            else {},
+            "build_args": lambda product_id=None: {"product_id": product_id} if product_id else {},
             "parse_response": _parse_shopify_inventory,
         },
         "check_warranty_status": {

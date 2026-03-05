@@ -27,17 +27,11 @@ class MockMemoryProvider(MemoryProvider):
     async def recall_by_entity(
         self, entity_type: str, entity_id: str, limit: int = 10
     ) -> list[Episode]:
-        results = [
-            ep
-            for ep in self.episodes.values()
-            if entity_id in ep.entities_referenced
-        ]
+        results = [ep for ep in self.episodes.values() if entity_id in ep.entities_referenced]
         results.sort(key=lambda e: e.timestamp, reverse=True)
         return results[:limit]
 
-    async def recall_similar(
-        self, query_embedding: list[float], limit: int = 5
-    ) -> list[Episode]:
+    async def recall_similar(self, query_embedding: list[float], limit: int = 5) -> list[Episode]:
         # Mock: return most recent episodes (no real vector search)
         results = sorted(self.episodes.values(), key=lambda e: e.timestamp, reverse=True)
         return results[:limit]
@@ -45,11 +39,7 @@ class MockMemoryProvider(MemoryProvider):
     async def recall_by_timerange(
         self, start: datetime, end: datetime, limit: int = 20
     ) -> list[Episode]:
-        results = [
-            ep
-            for ep in self.episodes.values()
-            if start <= ep.timestamp <= end
-        ]
+        results = [ep for ep in self.episodes.values() if start <= ep.timestamp <= end]
         results.sort(key=lambda e: e.timestamp, reverse=True)
         return results[:limit]
 

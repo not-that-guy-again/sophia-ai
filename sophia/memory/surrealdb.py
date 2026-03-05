@@ -70,9 +70,7 @@ class SurrealMemoryProvider(MemoryProvider):
         result = await self._db.query(query, {"entity_id": entity_id, "limit": limit})
         return [self._parse_episode(r) for r in self._extract_records(result)]
 
-    async def recall_similar(
-        self, query_embedding: list[float], limit: int = 5
-    ) -> list[Episode]:
+    async def recall_similar(self, query_embedding: list[float], limit: int = 5) -> list[Episode]:
         await self._connect()
         # Vector similarity search using SurrealDB's native vector functions
         query = """
@@ -82,9 +80,7 @@ class SurrealMemoryProvider(MemoryProvider):
             ORDER BY score DESC
             LIMIT $limit
         """
-        result = await self._db.query(
-            query, {"embedding": query_embedding, "limit": limit}
-        )
+        result = await self._db.query(query, {"embedding": query_embedding, "limit": limit})
         return [self._parse_episode(r) for r in self._extract_records(result)]
 
     async def recall_by_timerange(
@@ -132,14 +128,17 @@ class SurrealMemoryProvider(MemoryProvider):
                 created_at = $created_at,
                 rel_id = $rel_id
         """
-        await self._db.query(query, {
-            "from": f"entity:{relationship.from_entity}",
-            "relation": relationship.relation,
-            "to": f"entity:{relationship.to_entity}",
-            "metadata": relationship.metadata,
-            "created_at": relationship.created_at.isoformat(),
-            "rel_id": relationship.id,
-        })
+        await self._db.query(
+            query,
+            {
+                "from": f"entity:{relationship.from_entity}",
+                "relation": relationship.relation,
+                "to": f"entity:{relationship.to_entity}",
+                "metadata": relationship.metadata,
+                "created_at": relationship.created_at.isoformat(),
+                "rel_id": relationship.id,
+            },
+        )
         return relationship.id
 
     async def get_entity(self, entity_id: str) -> Entity | None:
@@ -159,10 +158,13 @@ class SurrealMemoryProvider(MemoryProvider):
                 SELECT * FROM $relation
                 WHERE in = $entity OR out = $entity
             """
-            result = await self._db.query(query, {
-                "relation": relation_type,
-                "entity": f"entity:{entity_id}",
-            })
+            result = await self._db.query(
+                query,
+                {
+                    "relation": relation_type,
+                    "entity": f"entity:{entity_id}",
+                },
+            )
         else:
             # Query all relationship tables
             query = """
@@ -199,7 +201,9 @@ class SurrealMemoryProvider(MemoryProvider):
     def _parse_episode(data: dict) -> Episode:
         return Episode(
             id=str(data.get("id", "")).replace("episode:", ""),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else data.get("timestamp", datetime.now(UTC)),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if isinstance(data.get("timestamp"), str)
+            else data.get("timestamp", datetime.now(UTC)),
             conversation_id=data.get("conversation_id", ""),
             participants=data.get("participants", []),
             summary=data.get("summary", ""),
@@ -217,8 +221,12 @@ class SurrealMemoryProvider(MemoryProvider):
             entity_type=data.get("entity_type", ""),
             name=data.get("name", ""),
             attributes=data.get("attributes", {}),
-            first_seen=datetime.fromisoformat(data["first_seen"]) if isinstance(data.get("first_seen"), str) else data.get("first_seen", datetime.now(UTC)),
-            last_seen=datetime.fromisoformat(data["last_seen"]) if isinstance(data.get("last_seen"), str) else data.get("last_seen", datetime.now(UTC)),
+            first_seen=datetime.fromisoformat(data["first_seen"])
+            if isinstance(data.get("first_seen"), str)
+            else data.get("first_seen", datetime.now(UTC)),
+            last_seen=datetime.fromisoformat(data["last_seen"])
+            if isinstance(data.get("last_seen"), str)
+            else data.get("last_seen", datetime.now(UTC)),
             embedding=data.get("embedding", []),
         )
 
@@ -230,5 +238,7 @@ class SurrealMemoryProvider(MemoryProvider):
             relation=data.get("relation_type", data.get("relation", "")),
             to_entity=str(data.get("out", "")).replace("entity:", ""),
             metadata=data.get("metadata", {}),
-            created_at=datetime.fromisoformat(data["created_at"]) if isinstance(data.get("created_at"), str) else data.get("created_at", datetime.now(UTC)),
+            created_at=datetime.fromisoformat(data["created_at"])
+            if isinstance(data.get("created_at"), str)
+            else data.get("created_at", datetime.now(UTC)),
         )

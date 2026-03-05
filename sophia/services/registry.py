@@ -91,9 +91,7 @@ class ServiceRegistry:
             resolved_config = _resolve_env_config(raw_config)
 
             if provider_name == "mcp":
-                instance = await self._initialize_mcp_service(
-                    service_name, resolved_config
-                )
+                instance = await self._initialize_mcp_service(service_name, resolved_config)
             else:
                 key = (service_name, provider_name)
                 cls = PROVIDER_REGISTRY.get(key)
@@ -119,18 +117,13 @@ class ServiceRegistry:
         platform = config.get("platform")
 
         if not server_url:
-            raise ValueError(
-                f"MCP provider for {service_name!r} requires 'server_url' in config"
-            )
+            raise ValueError(f"MCP provider for {service_name!r} requires 'server_url' in config")
         if not platform:
-            raise ValueError(
-                f"MCP provider for {service_name!r} requires 'platform' in config"
-            )
+            raise ValueError(f"MCP provider for {service_name!r} requires 'platform' in config")
 
         if platform not in PLATFORM_MAPPINGS:
             raise ValueError(
-                f"Unknown MCP platform {platform!r}. "
-                f"Available: {sorted(PLATFORM_MAPPINGS.keys())}"
+                f"Unknown MCP platform {platform!r}. Available: {sorted(PLATFORM_MAPPINGS.keys())}"
             )
 
         # Connection dedup: reuse client for same (url, name)
@@ -147,9 +140,7 @@ class ServiceRegistry:
             self._mcp_clients[client_key] = client
             logger.info("Connected MCP client to %s (%s)", server_name, server_url)
         else:
-            logger.info(
-                "Reusing MCP client for %s (%s)", server_name, server_url
-            )
+            logger.info("Reusing MCP client for %s (%s)", server_name, server_url)
 
         client = self._mcp_clients[client_key]
 
@@ -166,8 +157,7 @@ class ServiceRegistry:
         mapping_func = getattr(mapping_module, func_name, None)
         if mapping_func is None:
             raise ValueError(
-                f"Platform mapping module {mapping_module_name!r} has no "
-                f"function {func_name!r}"
+                f"Platform mapping module {mapping_module_name!r} has no function {func_name!r}"
             )
 
         tool_mapping = mapping_func()
@@ -194,10 +184,7 @@ class ServiceRegistry:
 
     def get(self, service_name: str) -> Any:
         if service_name not in self._services:
-            raise KeyError(
-                f"Service {service_name!r} not found. "
-                f"Available: {list(self._services)}"
-            )
+            raise KeyError(f"Service {service_name!r} not found. Available: {list(self._services)}")
         return self._services[service_name]
 
     async def teardown(self) -> None:
@@ -222,8 +209,7 @@ def _resolve_env_config(config: dict) -> dict:
             env_value = os.environ.get(env_var)
             if env_value is None:
                 raise EnvironmentError(
-                    f"Environment variable {env_var!r} required by config key "
-                    f"{key!r} is not set"
+                    f"Environment variable {env_var!r} required by config key {key!r} is not set"
                 )
             # Strip the _env suffix for the resolved key
             resolved_key = key[: -len("_env")]

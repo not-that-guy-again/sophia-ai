@@ -10,7 +10,7 @@ import json
 
 import pytest
 
-from sophia.core.loop import CONVERSE_TOOL_NAME, AgentLoop, PipelineResult
+from sophia.core.loop import CONVERSE_TOOL_NAME, AgentLoop
 from sophia.memory.mock import MockMemoryProvider
 from tests.conftest import MockLLMProvider
 
@@ -21,44 +21,52 @@ async def test_parameter_gate_shortcircuits_placeholder_order_id(
 ):
     """When proposer returns check_order_status(order_id='UNKNOWN') + converse,
     the parameter gate promotes converse and bypasses the full pipeline."""
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "order_status",
-            "target": None,
-            "parameters": {},
-        }),
-        # 2. Proposer — check_order_status with placeholder, then converse
-        json.dumps({
-            "candidates": [
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
                 {
-                    "tool_name": "check_order_status",
-                    "parameters": {"order_id": "UNKNOWN"},
-                    "reasoning": "Customer wants order status but we need the order ID first",
-                    "expected_outcome": "Look up order status",
-                },
-                {
-                    "tool_name": "converse",
+                    "action_requested": "order_status",
+                    "target": None,
                     "parameters": {},
-                    "reasoning": "We don't yet have the order ID, which is required to look up any order details",
-                    "expected_outcome": "Ask the customer for their order number",
-                },
-            ]
-        }),
-        # 3. Response generator (converse path) — asks for order number
-        "I'd be happy to help you check on your order! Could you please provide me with your order number so I can look that up for you?",
-        # 4. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "Customer asked about order status without providing order number.",
-                "actions_taken": [],
-                "outcome": "Agent asked for order number",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+                }
+            ),
+            # 2. Proposer — check_order_status with placeholder, then converse
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "check_order_status",
+                            "parameters": {"order_id": "UNKNOWN"},
+                            "reasoning": "Customer wants order status but we need the order ID first",
+                            "expected_outcome": "Look up order status",
+                        },
+                        {
+                            "tool_name": "converse",
+                            "parameters": {},
+                            "reasoning": "We don't yet have the order ID, which is required to look up any order details",
+                            "expected_outcome": "Ask the customer for their order number",
+                        },
+                    ]
+                }
+            ),
+            # 3. Response generator (converse path) — asks for order number
+            "I'd be happy to help you check on your order! Could you please provide me with your order number so I can look that up for you?",
+            # 4. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "Customer asked about order status without providing order number.",
+                        "actions_taken": [],
+                        "outcome": "Agent asked for order number",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     from sophia.config import Settings
     from sophia.tools.registry import ToolRegistry
@@ -126,38 +134,46 @@ async def test_parameter_gate_synthesizes_converse_when_no_converse_candidate(
 ):
     """When ALL candidates fail and no converse candidate exists,
     the gate synthesizes one and the pipeline bypasses."""
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "order_status",
-            "target": None,
-            "parameters": {},
-        }),
-        # 2. Proposer — only check_order_status with placeholder, NO converse
-        json.dumps({
-            "candidates": [
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
                 {
-                    "tool_name": "check_order_status",
-                    "parameters": {"order_id": "UNKNOWN"},
-                    "reasoning": "Customer wants order status but we need the order ID first",
-                    "expected_outcome": "Look up order status",
-                },
-            ]
-        }),
-        # 3. Response generator (converse path)
-        "Could you please share your order number? I'll look into the status for you right away.",
-        # 4. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "Customer asked about order without providing number.",
-                "actions_taken": [],
-                "outcome": "Agent requested order number",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+                    "action_requested": "order_status",
+                    "target": None,
+                    "parameters": {},
+                }
+            ),
+            # 2. Proposer — only check_order_status with placeholder, NO converse
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "check_order_status",
+                            "parameters": {"order_id": "UNKNOWN"},
+                            "reasoning": "Customer wants order status but we need the order ID first",
+                            "expected_outcome": "Look up order status",
+                        },
+                    ]
+                }
+            ),
+            # 3. Response generator (converse path)
+            "Could you please share your order number? I'll look into the status for you right away.",
+            # 4. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "Customer asked about order without providing number.",
+                        "actions_taken": [],
+                        "outcome": "Agent requested order number",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     from sophia.config import Settings
     from sophia.tools.registry import ToolRegistry
@@ -208,56 +224,100 @@ async def test_parameter_gate_passes_valid_candidates_through(
 ):
     """When candidates have valid parameters, the gate passes them through
     and the full pipeline runs normally."""
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "order_status",
-            "target": "ORD-12345",
-            "parameters": {"order_id": "ORD-12345"},
-        }),
-        # 2. Proposer — valid order ID
-        json.dumps({
-            "candidates": [
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
                 {
-                    "tool_name": "check_order_status",
+                    "action_requested": "order_status",
+                    "target": "ORD-12345",
                     "parameters": {"order_id": "ORD-12345"},
-                    "reasoning": "Looking up order ORD-12345",
-                    "expected_outcome": "Order status returned",
-                },
-            ]
-        }),
-        # 3. Consequence tree
-        json.dumps({
-            "consequences": [{
-                "description": "Customer sees order status",
-                "stakeholders_affected": ["customer"],
-                "probability": 0.95,
-                "tangibility": 0.8,
-                "harm_benefit": 0.3,
-                "affected_party": "customer",
-                "is_terminal": True,
-                "children": [],
-            }]
-        }),
-        # 4-7. Four evaluators (all green)
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        # 8. Response generator
-        "Your order ORD-12345 has been shipped and is on its way!",
-        # 9. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "Customer checked order status.",
-                "actions_taken": ["check_order_status"],
-                "outcome": "Status shown",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+                }
+            ),
+            # 2. Proposer — valid order ID
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "check_order_status",
+                            "parameters": {"order_id": "ORD-12345"},
+                            "reasoning": "Looking up order ORD-12345",
+                            "expected_outcome": "Order status returned",
+                        },
+                    ]
+                }
+            ),
+            # 3. Consequence tree
+            json.dumps(
+                {
+                    "consequences": [
+                        {
+                            "description": "Customer sees order status",
+                            "stakeholders_affected": ["customer"],
+                            "probability": 0.95,
+                            "tangibility": 0.8,
+                            "harm_benefit": 0.3,
+                            "affected_party": "customer",
+                            "is_terminal": True,
+                            "children": [],
+                        }
+                    ]
+                }
+            ),
+            # 4-7. Four evaluators (all green)
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            # 8. Response generator
+            "Your order ORD-12345 has been shipped and is on its way!",
+            # 9. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "Customer checked order status.",
+                        "actions_taken": ["check_order_status"],
+                        "outcome": "Status shown",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     from sophia.config import Settings
     from sophia.tools.registry import ToolRegistry

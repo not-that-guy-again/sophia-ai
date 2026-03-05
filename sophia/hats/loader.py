@@ -66,7 +66,9 @@ def load_hat(hat_path: Path) -> HatConfig:
 
     # Load stakeholders
     stakeholders_data = _load_json(hat_path / "stakeholders.json")
-    stakeholders = StakeholderRegistry(**stakeholders_data) if stakeholders_data else StakeholderRegistry()
+    stakeholders = (
+        StakeholderRegistry(**stakeholders_data) if stakeholders_data else StakeholderRegistry()
+    )
 
     # Load evaluator config
     eval_data = _load_json(hat_path / "evaluator_config.json")

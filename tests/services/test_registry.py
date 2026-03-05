@@ -100,12 +100,14 @@ async def test_env_resolution(monkeypatch):
         "_Custom", (), {"__init__": lambda self, **kw: setattr(self, "config", kw)}
     )
     reg = ServiceRegistry()
-    await reg.initialize({
-        "order": {
-            "provider": "custom",
-            "config": {"api_key_env": "MY_API_KEY", "base_url": "https://example.com"},
+    await reg.initialize(
+        {
+            "order": {
+                "provider": "custom",
+                "config": {"api_key_env": "MY_API_KEY", "base_url": "https://example.com"},
+            }
         }
-    })
+    )
     svc = reg.get("order")
     assert svc.config["api_key"] == "secret123"
     assert svc.config["base_url"] == "https://example.com"
@@ -116,12 +118,14 @@ async def test_missing_env_var_raises_clear_error():
     PROVIDER_REGISTRY[("order", "custom")] = _StubOrderService
     reg = ServiceRegistry()
     with pytest.raises(EnvironmentError, match="MISSING_VAR"):
-        await reg.initialize({
-            "order": {
-                "provider": "custom",
-                "config": {"token_env": "MISSING_VAR"},
+        await reg.initialize(
+            {
+                "order": {
+                    "provider": "custom",
+                    "config": {"token_env": "MISSING_VAR"},
+                }
             }
-        })
+        )
 
 
 # ── MCP Provider Tests ──────────────────────────────────────────────────────
@@ -144,9 +148,7 @@ def _make_mock_mcp_client():
             MCPToolDefinition(name="create_refund", description="", input_schema={}),
         ],
     )
-    client._tools = {
-        t.name: t for t in client.connect.return_value.tools
-    }
+    client._tools = {t.name: t for t in client.connect.return_value.tools}
     client.close = AsyncMock()
     return client
 
@@ -156,16 +158,18 @@ async def test_initialize_mcp_provider():
 
     with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
         reg = ServiceRegistry()
-        await reg.initialize({
-            "order": {
-                "provider": "mcp",
-                "config": {
-                    "server_url": "http://test:8080",
-                    "server_name": "test-server",
-                    "platform": "shopify",
-                },
+        await reg.initialize(
+            {
+                "order": {
+                    "provider": "mcp",
+                    "config": {
+                        "server_url": "http://test:8080",
+                        "server_name": "test-server",
+                        "platform": "shopify",
+                    },
+                }
             }
-        })
+        )
 
         svc = reg.get("order")
         assert hasattr(svc, "adapter")
@@ -178,24 +182,26 @@ async def test_mcp_client_dedup():
 
     with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
         reg = ServiceRegistry()
-        await reg.initialize({
-            "order": {
-                "provider": "mcp",
-                "config": {
-                    "server_url": "http://test:8080",
-                    "server_name": "test-server",
-                    "platform": "shopify",
+        await reg.initialize(
+            {
+                "order": {
+                    "provider": "mcp",
+                    "config": {
+                        "server_url": "http://test:8080",
+                        "server_name": "test-server",
+                        "platform": "shopify",
+                    },
                 },
-            },
-            "customer": {
-                "provider": "mcp",
-                "config": {
-                    "server_url": "http://test:8080",
-                    "server_name": "test-server",
-                    "platform": "shopify",
+                "customer": {
+                    "provider": "mcp",
+                    "config": {
+                        "server_url": "http://test:8080",
+                        "server_name": "test-server",
+                        "platform": "shopify",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         # Only one client created despite two services
         assert mock_client.connect.call_count == 1
@@ -208,16 +214,18 @@ async def test_mcp_teardown_closes_clients():
 
     with patch("sophia.services.mcp.client.MCPClient", return_value=mock_client):
         reg = ServiceRegistry()
-        await reg.initialize({
-            "order": {
-                "provider": "mcp",
-                "config": {
-                    "server_url": "http://test:8080",
-                    "server_name": "test-server",
-                    "platform": "shopify",
-                },
+        await reg.initialize(
+            {
+                "order": {
+                    "provider": "mcp",
+                    "config": {
+                        "server_url": "http://test:8080",
+                        "server_name": "test-server",
+                        "platform": "shopify",
+                    },
+                }
             }
-        })
+        )
 
         await reg.teardown()
         mock_client.close.assert_called_once()
@@ -227,12 +235,14 @@ async def test_mcp_teardown_closes_clients():
 async def test_mcp_missing_platform_raises():
     reg = ServiceRegistry()
     with pytest.raises(ValueError, match="Unknown MCP platform"):
-        await reg.initialize({
-            "order": {
-                "provider": "mcp",
-                "config": {
-                    "server_url": "http://test:8080",
-                    "platform": "nonexistent",
-                },
+        await reg.initialize(
+            {
+                "order": {
+                    "provider": "mcp",
+                    "config": {
+                        "server_url": "http://test:8080",
+                        "platform": "nonexistent",
+                    },
+                }
             }
-        })
+        )

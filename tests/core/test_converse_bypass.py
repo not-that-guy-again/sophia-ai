@@ -40,45 +40,58 @@ def test_proposer_prompt_converse_is_first_decision():
 
 def test_proposer_prompt_converse_only_candidate():
     """The prompt must instruct the LLM to make converse the ONLY candidate."""
-    assert "only candidate" in PROPOSER_SYSTEM_PROMPT.lower() or \
-           "exactly 1 candidate" in PROPOSER_SYSTEM_PROMPT.lower()
+    assert (
+        "only candidate" in PROPOSER_SYSTEM_PROMPT.lower()
+        or "exactly 1 candidate" in PROPOSER_SYSTEM_PROMPT.lower()
+    )
 
 
 @pytest.mark.asyncio
 async def test_converse_bypass_skips_pipeline(mock_llm: MockLLMProvider, cs_hat_config):
     """When proposer selects 'converse', consequence/evaluation/execution are skipped."""
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "general_inquiry",
-            "target": None,
-            "parameters": {},
-        }),
-        # 2. Proposer — selects converse
-        json.dumps({
-            "candidates": [{
-                "tool_name": "converse",
-                "parameters": {},
-                "reasoning": "User is greeting the agent, no tool needed",
-                "expected_outcome": "Agent responds with a friendly greeting",
-            }]
-        }),
-        # 3. Response generator (converse path)
-        "Hello! Welcome to TechMart. How can I help you today?",
-        # 4. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "Customer greeted the agent.",
-                "actions_taken": [],
-                "outcome": "Conversational exchange",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
+                {
+                    "action_requested": "general_inquiry",
+                    "target": None,
+                    "parameters": {},
+                }
+            ),
+            # 2. Proposer — selects converse
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "converse",
+                            "parameters": {},
+                            "reasoning": "User is greeting the agent, no tool needed",
+                            "expected_outcome": "Agent responds with a friendly greeting",
+                        }
+                    ]
+                }
+            ),
+            # 3. Response generator (converse path)
+            "Hello! Welcome to TechMart. How can I help you today?",
+            # 4. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "Customer greeted the agent.",
+                        "actions_taken": [],
+                        "outcome": "Conversational exchange",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     from sophia.config import Settings
+
     settings = Settings(
         llm_provider="anthropic",
         anthropic_api_key="test",
@@ -95,6 +108,7 @@ async def test_converse_bypass_skips_pipeline(mock_llm: MockLLMProvider, cs_hat_
     from sophia.tools.registry import ToolRegistry
     from sophia.hats.registry import HatRegistry
     from pathlib import Path
+
     loop.tool_registry = ToolRegistry()
     loop.hat_registry = HatRegistry(
         hats_dir=Path(settings.hats_dir),
@@ -169,9 +183,9 @@ def test_pipeline_result_bypassed_field():
 
     result = PipelineResult(
         intent=Intent(action_requested="general_inquiry", target=None, raw_message="Hi"),
-        proposal=Proposal(intent=None, candidates=[
-            CandidateAction(tool_name="converse", reasoning="greeting")
-        ]),
+        proposal=Proposal(
+            intent=None, candidates=[CandidateAction(tool_name="converse", reasoning="greeting")]
+        ),
         consequence_trees=[],
         evaluation_results=[],
         risk_classification=RiskClassification(tier="GREEN", weighted_score=0.0),
@@ -199,54 +213,100 @@ async def test_green_execution_uses_response_generator(mock_llm: MockLLMProvider
     from sophia.hats.registry import HatRegistry
     from pathlib import Path
 
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "inventory_check",
-            "target": "all",
-            "parameters": {},
-        }),
-        # 2. Proposer — selects a real tool
-        json.dumps({
-            "candidates": [{
-                "tool_name": "check_current_inventory",
-                "parameters": {},
-                "reasoning": "Customer wants to know product availability",
-                "expected_outcome": "Inventory data returned",
-            }]
-        }),
-        # 3. Consequence tree
-        json.dumps({
-            "consequences": [{
-                "description": "Customer sees inventory data",
-                "stakeholders_affected": ["customer"],
-                "probability": 0.95,
-                "tangibility": 0.8,
-                "harm_benefit": 0.3,
-                "affected_party": "customer",
-                "is_terminal": True,
-                "children": [],
-            }]
-        }),
-        # 4-7. Four evaluators (all green)
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        json.dumps({"score": 0.2, "confidence": 0.8, "flags": [], "reasoning": "ok", "key_concerns": []}),
-        # 8. Response generator — natural language
-        "We currently have a wide selection of electronics in stock, including laptops, headphones, and gaming consoles.",
-        # 9. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "Customer checked inventory.",
-                "actions_taken": ["check_current_inventory"],
-                "outcome": "Inventory data shown",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
+                {
+                    "action_requested": "inventory_check",
+                    "target": "all",
+                    "parameters": {},
+                }
+            ),
+            # 2. Proposer — selects a real tool
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "check_current_inventory",
+                            "parameters": {},
+                            "reasoning": "Customer wants to know product availability",
+                            "expected_outcome": "Inventory data returned",
+                        }
+                    ]
+                }
+            ),
+            # 3. Consequence tree
+            json.dumps(
+                {
+                    "consequences": [
+                        {
+                            "description": "Customer sees inventory data",
+                            "stakeholders_affected": ["customer"],
+                            "probability": 0.95,
+                            "tangibility": 0.8,
+                            "harm_benefit": 0.3,
+                            "affected_party": "customer",
+                            "is_terminal": True,
+                            "children": [],
+                        }
+                    ]
+                }
+            ),
+            # 4-7. Four evaluators (all green)
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            json.dumps(
+                {
+                    "score": 0.2,
+                    "confidence": 0.8,
+                    "flags": [],
+                    "reasoning": "ok",
+                    "key_concerns": [],
+                }
+            ),
+            # 8. Response generator — natural language
+            "We currently have a wide selection of electronics in stock, including laptops, headphones, and gaming consoles.",
+            # 9. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "Customer checked inventory.",
+                        "actions_taken": ["check_current_inventory"],
+                        "outcome": "Inventory data shown",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     settings = Settings(
         llm_provider="anthropic",
@@ -282,38 +342,49 @@ async def test_green_execution_uses_response_generator(mock_llm: MockLLMProvider
 @pytest.mark.asyncio
 async def test_converse_bypass_has_no_preflight_ack(mock_llm: MockLLMProvider, cs_hat_config):
     """When the pipeline takes the conversational bypass path, preflight_ack is None."""
-    mock_llm.set_responses([
-        # 1. Input gate
-        json.dumps({
-            "action_requested": "general_inquiry",
-            "target": None,
-            "parameters": {},
-        }),
-        # 2. Proposer — selects converse
-        json.dumps({
-            "candidates": [{
-                "tool_name": "converse",
-                "parameters": {},
-                "reasoning": "User is asking a general question",
-                "expected_outcome": "Conversational response",
-            }]
-        }),
-        # 3. Response generator (converse path)
-        "Sure, I can help with that!",
-        # 4. Memory extractor
-        json.dumps({
-            "episode": {
-                "participants": ["customer", "agent"],
-                "summary": "General inquiry.",
-                "actions_taken": [],
-                "outcome": "Conversational exchange",
-            },
-            "entities": [],
-            "relationships": [],
-        }),
-    ])
+    mock_llm.set_responses(
+        [
+            # 1. Input gate
+            json.dumps(
+                {
+                    "action_requested": "general_inquiry",
+                    "target": None,
+                    "parameters": {},
+                }
+            ),
+            # 2. Proposer — selects converse
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "tool_name": "converse",
+                            "parameters": {},
+                            "reasoning": "User is asking a general question",
+                            "expected_outcome": "Conversational response",
+                        }
+                    ]
+                }
+            ),
+            # 3. Response generator (converse path)
+            "Sure, I can help with that!",
+            # 4. Memory extractor
+            json.dumps(
+                {
+                    "episode": {
+                        "participants": ["customer", "agent"],
+                        "summary": "General inquiry.",
+                        "actions_taken": [],
+                        "outcome": "Conversational exchange",
+                    },
+                    "entities": [],
+                    "relationships": [],
+                }
+            ),
+        ]
+    )
 
     from sophia.config import Settings
+
     settings = Settings(
         llm_provider="anthropic",
         anthropic_api_key="test",
@@ -330,6 +401,7 @@ async def test_converse_bypass_has_no_preflight_ack(mock_llm: MockLLMProvider, c
     from sophia.tools.registry import ToolRegistry
     from sophia.hats.registry import HatRegistry
     from pathlib import Path
+
     loop.tool_registry = ToolRegistry()
     loop.hat_registry = HatRegistry(
         hats_dir=Path(settings.hats_dir),

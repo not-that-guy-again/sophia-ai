@@ -23,15 +23,15 @@ class Intent:
 class InputGate:
     """Parses raw user messages into structured Intent objects via LLM."""
 
-    def __init__(self, llm: LLMProvider, tool_definitions: str, hat_config: HatConfig | None = None):
+    def __init__(
+        self, llm: LLMProvider, tool_definitions: str, hat_config: HatConfig | None = None
+    ):
         self.llm = llm
         self.tool_definitions = tool_definitions
         self.hat_config = hat_config
 
     async def parse(self, raw_message: str) -> Intent:
-        core_prompt = INPUT_PARSE_SYSTEM_PROMPT.format(
-            tool_definitions=self.tool_definitions
-        )
+        core_prompt = INPUT_PARSE_SYSTEM_PROMPT.format(tool_definitions=self.tool_definitions)
         system_prompt = assemble_prompt("input_parse", core_prompt, self.hat_config)
 
         response = await self.llm.complete(

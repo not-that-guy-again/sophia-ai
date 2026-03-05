@@ -30,11 +30,13 @@ class MockLLMProvider(LLMProvider):
         response_format: dict | None = None,
         conversation_history: list[dict] | None = None,
     ) -> LLMResponse:
-        self.calls.append({
-            "system_prompt": system_prompt,
-            "user_message": user_message,
-            "response_format": response_format,
-        })
+        self.calls.append(
+            {
+                "system_prompt": system_prompt,
+                "user_message": user_message,
+                "response_format": response_format,
+            }
+        )
 
         if self._call_index < len(self._responses):
             content = self._responses[self._call_index]

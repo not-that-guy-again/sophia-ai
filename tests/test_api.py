@@ -32,9 +32,7 @@ def test_health():
     from sophia.config import Settings as _Settings
 
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(
-        init_db(_Settings(database_url="sqlite+aiosqlite:///:memory:"))
-    )
+    loop.run_until_complete(init_db(_Settings(database_url="sqlite+aiosqlite:///:memory:")))
     try:
         response = client.get("/health")
         assert response.status_code == 200
