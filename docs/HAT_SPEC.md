@@ -98,6 +98,21 @@ Tools must extend `sophia.tools.base.Tool` (ABC).
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `max_financial_impact` | `float \| None` | `None` | Maximum financial cost of a single invocation |
+| `risk_floor` | `str \| None` | `None` | Minimum risk tier this tool can produce (see below) |
+
+### Risk Floor (`risk_floor`)
+
+A tool's `risk_floor` declares the minimum risk tier any proposal involving that tool can produce. Valid values are `"GREEN"`, `"YELLOW"`, `"ORANGE"`, `"RED"`, or `None`. An invalid value raises `ValueError` at class definition time.
+
+- **`None`** — No floor. The pipeline decides the tier based on consequence analysis and evaluation. This is the default and represents a deliberate choice, not an oversight.
+- **`"GREEN"`** — No runtime effect. Documents that the tool's author considered the question.
+- **`"YELLOW"`** — The pipeline runs in full, but the classifier output is floored to at least YELLOW (confirmation required).
+- **`"ORANGE"`** — The pipeline runs in full, but the classifier output is floored to at least ORANGE (escalation required).
+- **`"RED"`** — The pipeline short-circuits immediately after the parameter gate. No consequence trees, no evaluators, immediate refusal.
+
+**Distinction from `authority_level`:** `authority_level` is a hint read by the LLM during proposal generation. `risk_floor` is a hard constraint enforced by pipeline code. They serve different systems and can be set independently.
+
+**Composition with Hat `min_tier`:** The Hat's `min_tier` (in `evaluator_config.json`) is a global floor applied after evaluation. `risk_floor` is per-tool and fires before evaluation. They compose: the effective minimum is the higher of the two.
 
 ### Required Methods
 
@@ -125,7 +140,8 @@ Every tool inherits `to_definition() -> dict`, which serializes the tool's metad
     "description": "What the tool does",
     "parameters": { ... },
     "authority_level": "agent",
-    "max_financial_impact": 50.00
+    "max_financial_impact": 50.00,
+    "risk_floor": null
 }
 ```
 

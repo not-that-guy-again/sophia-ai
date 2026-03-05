@@ -29,6 +29,7 @@ class OfferDiscountTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -71,6 +72,7 @@ class OfferFreeShippingTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = 15.00
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -114,6 +116,7 @@ class OfferPartialRefundTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = 50.00
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -155,6 +158,7 @@ class OfferFullRefundTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = 100.00
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -194,6 +198,7 @@ class SendReplacementProductTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.order_service = services.get("order")
@@ -227,4 +232,37 @@ class SendReplacementProductTool(Tool):
             success=True,
             data={"replacement_order_id": order.order_id},
             message=f"Replacement product shipped for order {params['order_id']}",
+        )
+
+
+class OfferFreeItemTool(Tool):
+    name = "offer_free_item"
+    description = "Offer a free product to a customer at no charge."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "customer_id": {
+                "type": "string",
+                "description": "Customer to receive the free item",
+            },
+            "product_id": {
+                "type": "string",
+                "description": "Product to offer for free",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Reason for offering the free item",
+            },
+        },
+        "required": ["customer_id", "product_id", "reason"],
+    }
+    authority_level = "agent"
+    max_financial_impact = None
+    risk_floor = "RED"
+
+    async def execute(self, params: dict) -> ToolResult:
+        return ToolResult(
+            success=False,
+            data=None,
+            message="Free items are never permitted by policy.",
         )

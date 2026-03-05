@@ -25,6 +25,7 @@
     "offer_partial_refund",
     "offer_full_refund",
     "send_replacement_product",
+    "offer_free_item",
     "notify_manager",
     "request_approval",
     "escalate_to_human"

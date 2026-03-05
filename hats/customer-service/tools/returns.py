@@ -37,6 +37,7 @@ class InitiateReturnTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None  # Variable based on order value
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -78,6 +79,7 @@ class CheckReturnStatusTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")

@@ -16,6 +16,7 @@ class TrackShipmentTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.shipping_service = services.get("shipping")
@@ -53,6 +54,7 @@ class UpdateShippingAddressTool(Tool):
     }
     authority_level = "agent"
     max_financial_impact = None
+    risk_floor = None
 
     def inject_services(self, services):
         self.shipping_service = services.get("shipping")

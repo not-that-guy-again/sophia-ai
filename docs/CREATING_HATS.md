@@ -99,6 +99,7 @@ class DoThingTool(Tool):
     }
     authority_level = "agent"      # "agent", "supervisor", or "admin"
     max_financial_impact = 50.00   # None if not applicable
+    risk_floor = None              # "GREEN", "YELLOW", "ORANGE", "RED", or None
 
     async def execute(self, params: dict) -> ToolResult:
         target_id = params.get("target_id", "")
@@ -116,8 +117,25 @@ class DoThingTool(Tool):
 - `parameters` follows JSON Schema format — this is shown to the LLM so it knows how to call the tool.
 - `authority_level` indicates who can approve this action: `"agent"` (autonomous), `"supervisor"` (needs confirmation), `"admin"` (needs explicit authorization).
 - `max_financial_impact` is used by evaluators to gauge risk. Set to `None` if the tool has no direct financial impact.
+- `risk_floor` declares the minimum risk tier for any proposal involving this tool. See "Risk Floors" below.
 - Files starting with `_` (like `__init__.py`) are skipped during tool loading.
 - You can put multiple tool classes in one file, or spread them across files — the loader scans all `.py` files in the directory.
+
+### Risk Floors
+
+Set `risk_floor` on each tool to declare its minimum safe tier. This is distinct from `authority_level` — `authority_level` is a hint to the LLM during proposal generation, while `risk_floor` is a hard constraint enforced by the pipeline.
+
+| Value | Behavior |
+|-------|----------|
+| `None` | No floor — the pipeline decides based on consequence analysis (default) |
+| `"GREEN"` | No runtime effect; documents that you considered the question |
+| `"YELLOW"` | Pipeline runs fully but tier is floored to at least YELLOW (confirmation required) |
+| `"ORANGE"` | Pipeline runs fully but tier is floored to at least ORANGE (escalation required) |
+| `"RED"` | Pipeline short-circuits — no consequence engine, no evaluators, immediate refusal |
+
+**When to use `risk_floor = "RED"`:** Set this on tools that must never execute autonomously and where no context could justify execution. Examples: giving away free products, deleting accounts without verification, bypassing security checks.
+
+**When to rely on `authority_level` and constraints instead:** Use `authority_level` and policy constraints for context-dependent decisions where the pipeline's deliberation produces genuine signal. A refund might be appropriate or inappropriate depending on the order — that's a pipeline decision, not a floor.
 
 ## Step 3: Define Constraints (`constraints.json`)
 

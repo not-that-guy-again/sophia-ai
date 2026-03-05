@@ -58,11 +58,12 @@ async def test_escalation(tool_registry: ToolRegistry):
 
 def test_hat_registers_all_tools(tool_registry: ToolRegistry):
     definitions = tool_registry.get_definitions()
-    assert len(definitions) == 19
+    assert len(definitions) == 20
     names = {d["name"] for d in definitions}
     assert "look_up_order" in names
     assert "escalate_to_human" in names
     assert "offer_full_refund" in names
+    assert "offer_free_item" in names
 
 
 @pytest.mark.asyncio

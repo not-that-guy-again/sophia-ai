@@ -88,6 +88,9 @@ class ChatResponse(BaseModel):
     evaluations: list[EvaluatorResultResponse] = []
     risk_classification: RiskClassificationResponse | None = None
     execution: ExecutionResponse
+    risk_floor_short_circuit: bool = False
+    risk_floor_trigger_tool: str | None = None
+    risk_floor_trigger_value: str | None = None
     metadata: dict = {}
 
 
