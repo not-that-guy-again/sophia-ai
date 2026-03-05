@@ -47,3 +47,6 @@ Each ADR follows a consistent structure:
 | [028](ADR-028-outbound-notifications.md) | Outbound notification service | Accepted |
 | [029](ADR-029-webhook-event-execution.md) | Webhook event action execution | Accepted |
 | [030](ADR-030-situation-evaluation.md) | Situation evaluation for defensive proposals | Accepted |
+| [031](ADR-031-tool-declared-risk-floors.md) | Tool-declared risk floors | Accepted |
+| [032](ADR-032-per-stage-llm-model-routing.md) | Per-stage LLM model routing | Accepted |
+| [033](ADR-033-consequence-tree-caching.md) | Consequence tree caching | Accepted |
