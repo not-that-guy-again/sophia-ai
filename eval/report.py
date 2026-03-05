@@ -114,9 +114,7 @@ def generate_markdown(run: EvalRun) -> str:
 
             # Show per-turn criteria when it differs from scenario-level
             if t.pass_criteria["minimum_tier"] != s.pass_criteria["minimum_tier"]:
-                lines.append(
-                    f"- **Turn criteria:** {t.pass_criteria['minimum_tier']} minimum"
-                )
+                lines.append(f"- **Turn criteria:** {t.pass_criteria['minimum_tier']} minimum")
 
             lines += [
                 f"- **Result:** {_tier_str(t.risk_tier)}" + (" *(bypassed)*" if t.bypassed else ""),

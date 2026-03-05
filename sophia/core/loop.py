@@ -49,6 +49,7 @@ def _build_model_config(s) -> dict:
         "memory": s.llm_model_memory or fallback,
     }
 
+
 CONVERSE_TOOL_NAME = "converse"
 DEFENSIVE_TOOL_NAMES = {CONVERSE_TOOL_NAME, "escalate_to_human"}
 
