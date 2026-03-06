@@ -121,9 +121,7 @@ async def test_cache_key_ignores_parameter_values(
 
 
 @pytest.mark.asyncio
-async def test_cache_key_varies_by_tool_name(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_cache_key_varies_by_tool_name(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Different tools → different cache keys."""
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config)
 
@@ -157,17 +155,13 @@ async def test_cache_key_varies_by_hat_name(mock_llm: MockLLMProvider):
     from sophia.hats.schema import HatConfig, HatManifest, StakeholderRegistry
 
     hat_a = HatConfig(
-        manifest=HatManifest(
-            name="hat-a", version="1.0", description="A", tool_modules=[]
-        ),
+        manifest=HatManifest(name="hat-a", version="1.0", description="A", tool_modules=[]),
         hat_path="/tmp/hat-a",
         stakeholders=StakeholderRegistry(stakeholders=[]),
         constraints={},
     )
     hat_b = HatConfig(
-        manifest=HatManifest(
-            name="hat-b", version="1.0", description="B", tool_modules=[]
-        ),
+        manifest=HatManifest(name="hat-b", version="1.0", description="B", tool_modules=[]),
         hat_path="/tmp/hat-b",
         stakeholders=StakeholderRegistry(stakeholders=[]),
         constraints={},
@@ -182,15 +176,11 @@ async def test_cache_key_varies_by_hat_name(mock_llm: MockLLMProvider):
 
 
 @pytest.mark.asyncio
-async def test_expired_entry_regenerates(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_expired_entry_regenerates(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Expired cache entry triggers regeneration."""
     mock_llm.set_responses([BENIGN_TREE_JSON, BENIGN_TREE_JSON])
     # TTL of 0 means entry expires immediately
-    engine = ConsequenceEngine(
-        llm=mock_llm, hat_config=cs_hat_config, cache_ttl_seconds=0
-    )
+    engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config, cache_ttl_seconds=0)
 
     await engine.analyze(_candidate(order_id="ORD-111"))
     await engine.analyze(_candidate(order_id="ORD-222"))
@@ -218,9 +208,7 @@ async def test_rebind_candidate_updates_candidate_action(
 
 
 @pytest.mark.asyncio
-async def test_clear_cache_empties_dict(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_clear_cache_empties_dict(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """clear_cache() empties the internal cache dict."""
     mock_llm.set_responses([BENIGN_TREE_JSON])
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config)
@@ -248,12 +236,8 @@ async def test_per_tool_ttl_overrides_engine_default(
         tool_registry=registry,
     )
 
-    await engine.analyze(
-        _candidate(tool_name="short_ttl_tool", order_id="ORD-1")
-    )
-    await engine.analyze(
-        _candidate(tool_name="short_ttl_tool", order_id="ORD-2")
-    )
+    await engine.analyze(_candidate(tool_name="short_ttl_tool", order_id="ORD-1"))
+    await engine.analyze(_candidate(tool_name="short_ttl_tool", order_id="ORD-2"))
 
     # Both calls should generate (TTL=0 means never cache)
     assert len(mock_llm.calls) == 2
@@ -284,9 +268,7 @@ async def test_per_tool_ttl_none_uses_engine_default(
 
 
 @pytest.mark.asyncio
-async def test_cache_hit_count_increments(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_cache_hit_count_increments(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Cache hit increments the hit_count on the cached entry."""
     mock_llm.set_responses([BENIGN_TREE_JSON])
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config)

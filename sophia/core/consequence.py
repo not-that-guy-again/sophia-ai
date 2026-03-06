@@ -101,9 +101,7 @@ class ConsequenceEngine:
         cached = self._cache.get(key)
         if cached and (time.monotonic() - cached.cached_at) < effective_ttl:
             cached.hit_count += 1
-            logger.debug(
-                "Consequence cache hit: %s (hit_count=%d)", key, cached.hit_count
-            )
+            logger.debug("Consequence cache hit: %s (hit_count=%d)", key, cached.hit_count)
             return self._rebind_candidate(cached.tree, candidate)
 
         # Cache miss — generate
@@ -175,8 +173,7 @@ class ConsequenceEngine:
         """Derive a cache key from hat name, tool name, and parameter shape."""
         hat_name = self.hat_config.name if self.hat_config else "default"
         param_shape = {
-            key: type(value).__name__
-            for key, value in sorted(candidate.parameters.items())
+            key: type(value).__name__ for key, value in sorted(candidate.parameters.items())
         }
         return f"{hat_name}:{candidate.tool_name}:{json.dumps(param_shape, sort_keys=True)}"
 

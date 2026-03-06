@@ -84,9 +84,7 @@ def test_tool_with_none_ttl_uses_engine_default():
 
 
 @pytest.mark.asyncio
-async def test_tool_with_zero_ttl_never_caches(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_tool_with_zero_ttl_never_caches(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Tool with consequence_cache_ttl = 0 always generates fresh trees."""
     mock_llm.set_responses([TREE_JSON, TREE_JSON])
 
