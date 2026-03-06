@@ -25,6 +25,7 @@ class Tool(ABC):
     authority_level: str  # "agent", "supervisor", "admin"
     max_financial_impact: float | None = None
     risk_floor: str | None = None  # "GREEN" | "YELLOW" | "ORANGE" | "RED" | None
+    consequence_cache_ttl: int | None = None  # seconds; None = use engine default
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

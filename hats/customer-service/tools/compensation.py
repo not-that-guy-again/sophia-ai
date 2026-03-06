@@ -30,6 +30,7 @@ class OfferDiscountTool(Tool):
     authority_level = "agent"
     max_financial_impact = None
     risk_floor = None
+    consequence_cache_ttl = 600
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -117,6 +118,7 @@ class OfferPartialRefundTool(Tool):
     authority_level = "agent"
     max_financial_impact = 50.00
     risk_floor = None
+    consequence_cache_ttl = 600
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -159,6 +161,7 @@ class OfferFullRefundTool(Tool):
     authority_level = "agent"
     max_financial_impact = 100.00
     risk_floor = None
+    consequence_cache_ttl = 600
 
     def inject_services(self, services):
         self.compensation_service = services.get("compensation")
@@ -259,6 +262,7 @@ class OfferFreeItemTool(Tool):
     authority_level = "agent"
     max_financial_impact = None
     risk_floor = "RED"
+    consequence_cache_ttl = 0
 
     async def execute(self, params: dict) -> ToolResult:
         return ToolResult(

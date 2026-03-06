@@ -1,7 +1,9 @@
 """Consequence tree data models and generation engine."""
 
+import dataclasses
 import json
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
 
@@ -59,6 +61,13 @@ class ConsequenceTree:
     best_terminal: ConsequenceNode | None
 
 
+@dataclass
+class CachedTree:
+    tree: ConsequenceTree
+    cached_at: float  # time.monotonic() timestamp
+    hit_count: int = 0
+
+
 class ConsequenceEngine:
     """Generates consequence trees for candidate actions using LLM."""
 
@@ -67,13 +76,48 @@ class ConsequenceEngine:
         llm: LLMProvider,
         hat_config: HatConfig | None = None,
         max_depth: int = 3,
+        cache_ttl_seconds: int = 3600,
+        tool_registry=None,
     ):
         self.llm = llm
         self.hat_config = hat_config
         self.max_depth = max_depth
+        self.cache_ttl = cache_ttl_seconds
+        self.tool_registry = tool_registry
+        self._cache: dict[str, CachedTree] = {}
 
     async def analyze(self, candidate: CandidateAction) -> ConsequenceTree:
-        """Generate a consequence tree for a single candidate action."""
+        """Generate or return a cached consequence tree for a candidate action."""
+        # Resolve effective TTL — per-tool override takes precedence
+        effective_ttl = self.cache_ttl
+        if self.tool_registry:
+            tool = self.tool_registry.get(candidate.tool_name)
+            if tool and getattr(tool, "consequence_cache_ttl", None) is not None:
+                effective_ttl = tool.consequence_cache_ttl
+
+        key = self._cache_key(candidate)
+
+        # Check cache
+        cached = self._cache.get(key)
+        if cached and (time.monotonic() - cached.cached_at) < effective_ttl:
+            cached.hit_count += 1
+            logger.debug(
+                "Consequence cache hit: %s (hit_count=%d)", key, cached.hit_count
+            )
+            return self._rebind_candidate(cached.tree, candidate)
+
+        # Cache miss — generate
+        tree = await self._generate(candidate)
+
+        # Only cache if effective TTL > 0
+        if effective_ttl > 0:
+            self._cache[key] = CachedTree(tree=tree, cached_at=time.monotonic())
+
+        logger.debug("Consequence cache miss: %s", key)
+        return tree
+
+    async def _generate(self, candidate: CandidateAction) -> ConsequenceTree:
+        """Generate a consequence tree for a single candidate action via LLM."""
         stakeholders_text = self._format_stakeholders()
         constraints_text = self._format_constraints()
 
@@ -126,6 +170,39 @@ class ConsequenceEngine:
         )
 
         return tree
+
+    def _cache_key(self, candidate: CandidateAction) -> str:
+        """Derive a cache key from hat name, tool name, and parameter shape."""
+        hat_name = self.hat_config.name if self.hat_config else "default"
+        param_shape = {
+            key: type(value).__name__
+            for key, value in sorted(candidate.parameters.items())
+        }
+        return f"{hat_name}:{candidate.tool_name}:{json.dumps(param_shape, sort_keys=True)}"
+
+    @staticmethod
+    def _is_expired(cached: CachedTree, ttl: float) -> bool:
+        return (time.monotonic() - cached.cached_at) >= ttl
+
+    @staticmethod
+    def _rebind_candidate(tree: ConsequenceTree, candidate: CandidateAction) -> ConsequenceTree:
+        """Return a copy of the tree bound to the current candidate."""
+        return dataclasses.replace(tree, candidate_action=candidate)
+
+    def clear_cache(self) -> None:
+        """Clear all cached trees. Called on hat re-equip."""
+        count = len(self._cache)
+        self._cache.clear()
+        logger.info("Consequence cache cleared (%d entries)", count)
+
+    @property
+    def cache_stats(self) -> dict:
+        """Return hit/miss counts and entry count for observability."""
+        total_hits = sum(e.hit_count for e in self._cache.values())
+        return {
+            "entries": len(self._cache),
+            "total_hits": total_hits,
+        }
 
     async def analyze_situation(self, situation: SituationCandidate) -> ConsequenceTree:
         """Generate a consequence tree for the user's request, not the agent's response.
