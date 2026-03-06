@@ -80,11 +80,7 @@ async def test_two_candidate_trees_generated_concurrently(cs_hat_config: HatConf
     ]
 
     wall_start = time.monotonic()
-    trees = list(
-        await asyncio.gather(
-            *[engine.analyze(candidate) for candidate in candidates]
-        )
-    )
+    trees = list(await asyncio.gather(*[engine.analyze(candidate) for candidate in candidates]))
     wall_end = time.monotonic()
 
     wall_time = wall_end - wall_start
@@ -108,20 +104,14 @@ async def test_two_candidate_trees_generated_concurrently(cs_hat_config: HatConf
 
 
 @pytest.mark.asyncio
-async def test_single_candidate_still_works(
-    mock_llm: MockLLMProvider, cs_hat_config: HatConfig
-):
+async def test_single_candidate_still_works(mock_llm: MockLLMProvider, cs_hat_config: HatConfig):
     """Single candidate through gather produces one tree — regression guard."""
     mock_llm.set_responses([TREE_A])
 
     engine = ConsequenceEngine(llm=mock_llm, hat_config=cs_hat_config, max_depth=2)
     candidates = [_make_candidate("offer_full_refund")]
 
-    trees = list(
-        await asyncio.gather(
-            *[engine.analyze(candidate) for candidate in candidates]
-        )
-    )
+    trees = list(await asyncio.gather(*[engine.analyze(candidate) for candidate in candidates]))
 
     assert len(trees) == 1
     assert trees[0].candidate_action.tool_name == "offer_full_refund"
@@ -141,11 +131,7 @@ async def test_tree_order_matches_candidate_order(
         _make_candidate("ship_replacement"),
     ]
 
-    trees = list(
-        await asyncio.gather(
-            *[engine.analyze(candidate) for candidate in candidates]
-        )
-    )
+    trees = list(await asyncio.gather(*[engine.analyze(candidate) for candidate in candidates]))
 
     # Order must match: tree[0] is for candidate[0], tree[1] is for candidate[1]
     assert trees[0].candidate_action.tool_name == "offer_full_refund"
@@ -170,11 +156,7 @@ async def test_three_candidates_all_produce_trees(
         _make_candidate("apply_store_credit"),
     ]
 
-    trees = list(
-        await asyncio.gather(
-            *[engine.analyze(candidate) for candidate in candidates]
-        )
-    )
+    trees = list(await asyncio.gather(*[engine.analyze(candidate) for candidate in candidates]))
 
     assert len(trees) == 3
     assert trees[0].candidate_action.tool_name == "offer_full_refund"
