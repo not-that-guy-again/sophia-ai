@@ -497,11 +497,13 @@ class AgentLoop:
             result.metadata.update(gate_metadata)
             return result
 
-        # Step 3: Generate consequence trees for each candidate
-        consequence_trees: list[ConsequenceTree] = []
-        for candidate in proposal.candidates:
-            tree = await self.consequence_engine.analyze(candidate)
-            consequence_trees.append(tree)
+        # Step 3: Generate consequence trees for each candidate (concurrent)
+        consequence_trees = list(
+            await asyncio.gather(
+                *[self.consequence_engine.analyze(candidate) for candidate in proposal.candidates]
+            )
+        )
+        for candidate, tree in zip(proposal.candidates, consequence_trees):
             logger.info(
                 "Consequence tree for '%s': %d nodes, worst=%.2f, best=%.2f",
                 candidate.tool_name,
