@@ -116,7 +116,7 @@ Abstract interface supporting multiple backends:
 
 - **`input_gate.py`** — Parses raw user messages into structured `Intent` objects. Prompt is assembled from core + hat system prompt.
 - **`proposer.py`** — Generates 1-3 `CandidateAction` items with reasoning. Only sees the active hat's tools. Can select `"converse"` to bypass consequence/evaluation stages.
-- **`consequence.py`** — Generates depth-first consequence trees for each candidate action. Each node carries stakeholders, probability, tangibility, and harm/benefit scores.
+- **`consequence.py`** — Generates depth-first consequence trees for each candidate action. Each node carries stakeholders, probability, tangibility, and harm/benefit scores. Trees are cached in-memory per-process keyed on `(hat_name, tool_name, parameter_shape)` (ADR-033). Cache is cleared on hat re-equip.
 - **`evaluators/`** — Four independent evaluators (tribal, domain, self-interest, authority) score consequence trees in parallel.
 - **`risk_classifier.py`** — Deterministic aggregation of evaluator scores into risk tiers (GREEN/YELLOW/ORANGE/RED). Supports catastrophic-harm overrides and evaluator-disagreement bumps.
 - **`executor.py`** — Tiered execution: GREEN executes, YELLOW requests confirmation, ORANGE auto-escalates, RED refuses. Handles `"converse"` gracefully without touching the tool registry.
@@ -194,6 +194,7 @@ Settings are loaded from environment variables (`.env` file) via Pydantic `BaseS
 | `LLM_MODEL_EVALUATORS` | *(uses `LLM_MODEL`)* | Model for all four evaluators |
 | `LLM_MODEL_RESPONSE_GEN` | *(uses `LLM_MODEL`)* | Model for response generation |
 | `LLM_MODEL_MEMORY` | *(uses `LLM_MODEL`)* | Model for memory extraction |
+| `CONSEQUENCE_CACHE_TTL_SECONDS` | `3600` | TTL for consequence tree cache entries (ADR-033) |
 | `DEFAULT_HAT` | `customer-service` | Hat to equip on startup |
 | `HATS_DIR` | `./hats` | Directory to scan for hats |
 | `DATABASE_URL` | `sqlite+aiosqlite:///sophia.db` | Database connection |

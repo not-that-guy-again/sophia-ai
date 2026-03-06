@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     tree_max_depth: int = 3
     tree_prune_threshold: float = 0.05
 
+    # Consequence tree caching (ADR-033)
+    consequence_cache_ttl_seconds: int = 3600
+
     # Catastrophic threshold (core safety, not hat-configurable)
     catastrophic_threshold: float = -0.8
 

@@ -424,6 +424,12 @@ async def test_parameter_gate_passes_valid_candidates_through(
     gate_data = result.metadata["parameter_gate"]
     assert all(v["passed"] for v in gate_data)
 
+    # Consequence cache stats in metadata (ADR-033)
+    assert "consequence_cache" in result.metadata
+    cache_stats = result.metadata["consequence_cache"]
+    assert "entries" in cache_stats
+    assert "total_hits" in cache_stats
+
     # 8 LLM calls: gate, proposer, consequence tree, 4 evaluators, memory
     # (hat min_tier="ORANGE" floors GREEN → ORANGE, skipping response generator)
     assert len(mock_llm.calls) == 8

@@ -258,6 +258,8 @@ class AgentLoop:
             llm=_stage_llm(s.llm_model_consequence),
             hat_config=hat,
             max_depth=s.tree_max_depth,
+            cache_ttl_seconds=s.consequence_cache_ttl_seconds,
+            tool_registry=self.tool_registry,
         )
 
         # Evaluation panel: 4 independent evaluators
@@ -583,6 +585,7 @@ class AgentLoop:
                 "hat": hat_name,
                 "source": source,
                 "model_config": _build_model_config(self.settings),
+                "consequence_cache": self.consequence_engine.cache_stats,
                 "memory_context": {
                     "entities_recalled": len(memory_context.get("entities", [])),
                     "episodes_recalled": len(memory_context.get("episodes", [])),
